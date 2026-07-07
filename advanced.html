@@ -175,7 +175,7 @@
       <a class="guidebtn alt" href="https://www.prydwen.gg/nikke/guides/overload-gear-intro" target="_blank" rel="noopener">Intro guide ↗</a>
     </div>
 
-    <details open>
+    <details>
       <summary>Category 2 flowchart (2 effects)</summary>
       <img class="flowimg" src="flowchart-cat2.png" alt="Category 2 flowchart"
            onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
@@ -349,16 +349,21 @@ function buildPlan(){
     const closable=cands.filter(q=>!baseMust[q].includes(e));
     const selfSuff=closable.filter(q=>baseMust[q].filter(f=>f!==e).every(f=>secOn(q,f)));
     const budget=Math.max(0,cands.length-ua.remaining[e]);
-    // Close the pieces MOST expensive to keep carrying; keep the cheapest carriers open.
-    // Carry cost = locks still needed to protect unlocked good musts before fishing
-    // (dominant term), then the per-roll cost after those locks. A piece that already
-    // locked its musts to prepare for fishing scores lowest and stays open — the tool
-    // must never flip-flop on a piece right after telling it to spend locks.
-    const carryScore=q=>{
-      const needLock=ua.cls[q].filter(l=>!l.empty&&!l.locked&&l.meets&&baseMust[q].includes(l.effect)).length;
-      return needLock*10 + rerollCost(lockCountOf(q)+needLock);
+    // Close the pieces MOST expensive to keep carrying; keep the cheapest carriers
+    // open. Carry cost = full expected modules for this piece to ALSO land e:
+    // locks still needed to protect unlocked good musts, then fishing e on its
+    // actual free lines — which makes a piece whose free line is L2 (50% appear)
+    // strongly preferred over one stuck fishing L3 solo (30%). Already-spent
+    // locks aren't counted, so a committed piece stays carrier (no flip-flop).
+    const carryEV=q=>{
+      const cls=ua.cls[q];
+      let locks=lockCountOf(q), pre=0;
+      cls.forEach(l=>{ if(!l.empty&&!l.locked&&l.meets&&baseMust[q].includes(l.effect)){ pre+=lockCost(locks); locks++; } });
+      const excluded=cls.filter(l=>!l.empty).map(l=>l.effect);
+      const free=cls.filter(l=>l.locked?false:!(!l.empty&&l.meets&&baseMust[q].includes(l.effect))).map(l=>l.i);
+      return pre+evFinish(free,[e],locks,excluded);
     };
-    const closed=selfSuff.sort((x,y)=>carryScore(y)-carryScore(x)||PIECES.indexOf(x)-PIECES.indexOf(y)).slice(0,budget);
+    const closed=selfSuff.sort((x,y)=>carryEV(y)-carryEV(x)||PIECES.indexOf(x)-PIECES.indexOf(y)).slice(0,budget);
     const open=cands.filter(q=>!closed.includes(q));
     if(open.length<=ua.remaining[e]){
       forcedOn[e]=open.slice();
@@ -373,7 +378,26 @@ function buildPlan(){
     const opt=reqEffects().filter(e=>!mustAll.includes(e)&&ua.remaining[e]>0).slice(0,Math.max(0,3-must.length));
     sets[p]={must,opt,mustAll,overflow:mustAll.length>3};
   });
-  return {ua,sets,forcedOn};
+  // Cat-2-track reservation: only (open pieces − remaining quota) pieces may ever
+  // finish WITHOUT a quota effect, so only that many may take the Cat-2 route of
+  // locking a lone Black/Blue Line 1. A piece claims a slot by finishing its other
+  // musts OR by locking a desired Line 1 (the Cat-2 track's signature move). Once
+  // slots are full, the remaining pieces are presumptive carriers — Cat-3 rules,
+  // where the chart NEVER locks a lone Blue/Black Line 1.
+  const cat2Full={};
+  reqEffects().forEach(e=>{
+    if(ua.remaining[e]<=0) return;
+    const cands=PIECES.filter(q=>!ua.keepers[e].has(q));
+    const budget=Math.max(0,cands.length-ua.remaining[e]);
+    const claimed=cands.filter(q=>{
+      const securedOthers=baseMust[q].filter(f=>f!==e).every(f=>secOn(q,f));
+      const l1=ua.cls[q][0];
+      const l1Claim=l1.locked && !l1.empty && baseMust[q].includes(l1.effect);
+      return securedOthers || l1Claim;
+    }).length;
+    cat2Full[e]=claimed>=budget;
+  });
+  return {ua,sets,forcedOn,cat2Full};
 }
 
 function analyze(piece){
@@ -389,8 +413,81 @@ function analyze(piece){
   const distinctGood=new Set(goodLines.map(l=>l.effect));
   const lockedCount=lines.filter(l=>l.locked).length;
   const missing=desired.filter(e=>!distinctGood.has(e));
+  // open-quota effects this piece could still carry (NOT already among its musts —
+  // ×4 effects and landed/forced quota don't count, the Cat-2-vs-Cat-3 question only
+  // exists for genuinely optional quota) whose Cat-2 slots are all claimed: this
+  // piece is a presumptive carrier for them, so Cat-3 rules apply to its Line 1.
+  const cat2Blocked=reqEffects().filter(e=>ua.remaining[e]>0 && !s.mustAll.includes(e) && plan.cat2Full[e]);
   return {desired,optional,N,lines,desiredLines,goodLines,distinctGood,lockedCount,missing,ua,
-          forcedOn:plan.forcedOn,overflow:s.overflow,mustAll:s.mustAll};
+          forcedOn:plan.forcedOn,overflow:s.overflow,mustAll:s.mustAll,cat2Blocked};
+}
+
+/* ============== EXPECTED-COST MODEL (rough EV in Custom Modules) ==============
+   Probabilities from the game's published tables:
+   - line appearance per reroll: L1 100%, L2 50%, L3 30%
+   - effect weights (substat table header): 10-12% each, renormalized over the
+     effects not already on the piece (one type per gear)
+   - value bands: T1-5 60%, T6-10 35%, T11-15 5% -> P(roll ≥ its minimum tier)
+   Assumes the Keep/Change ratchet (rolls never regress) and the advised policy
+   (catch a target -> fix value -> lock if more work remains -> keep fishing).
+   These are coarse averages — real costs swing wildly with luck.              */
+const EFF_P={'Elemental Damage':.10,'ATK':.10,'Max Ammo':.12,'Charge Speed':.12,'Hit Rate':.12,'Charge Damage':.12,'Critical Rate':.12,'Critical Damage':.10,'DEF':.10};
+const LINE_P=[1,.5,.3];
+function minHitP(e){
+  if(EFFECTS[e].min<=0) return 1;
+  let p=0; for(let t=minTier(e);t<=15;t++) p+= t<=5?0.12:(t<=10?0.07:0.01);
+  return p;
+}
+function effPool(excluded){
+  const rem=EFF_NAMES.filter(e=>!excluded.includes(e));
+  const tot=rem.reduce((s,e)=>s+EFF_P[e],0)||1;
+  return e=>(rem.includes(e)?EFF_P[e]/tot:0);
+}
+// E[modules] to land every effect in `targets` on the free lines, locking after
+// each catch (except the last), starting from `locks` locked lines.
+function evFinish(freeLines,targets,locks,excluded){
+  if(!targets.length) return 0;
+  const pool=effPool(excluded);
+  const hits=[]; let p=0;
+  freeLines.forEach(l=>targets.forEach(t=>{const w=LINE_P[l]*pool(t); if(w>0){hits.push({l,t,w}); p+=w;}}));
+  if(p<=0) return Infinity;
+  const rollC=rerollCost(locks);
+  let ev=rollC/p;
+  hits.forEach(hh=>{
+    const rest=targets.filter(x=>x!==hh.t);
+    const fix=(1/minHitP(hh.t)-1)*rollC;
+    const cont=rest.length? lockCost(locks)+evFinish(freeLines.filter(x=>x!==hh.l),rest,locks+1,excluded.concat(hh.t)) : 0;
+    ev += (hh.w/p)*(fix+cont);
+  });
+  return ev;
+}
+// Rough E[modules] for a piece to finish its current must-set following the advice.
+function pieceCostEstimate(p){
+  if(!reqEffects().length) return null;
+  const a=analyze(p);
+  if(a.overflow) return null;
+  let locks=a.lockedCount, cost=0;
+  const excluded=[]; const freeIdx=[]; const keepGood=[]; const fixable=[];
+  a.lines.forEach(l=>{
+    if(l.locked){ if(!l.empty) excluded.push(l.effect); return; }
+    if(!l.empty && a.desired.includes(l.effect)){
+      excluded.push(l.effect);
+      if(l.meets) keepGood.push(l); else fixable.push(l);
+      return;
+    }
+    freeIdx.push(l.i);
+  });
+  const present=a.lines.filter(l=>!l.empty).map(l=>l.effect);
+  const toFish=a.desired.filter(e=>!present.includes(e));
+  fixable.forEach((l,idx)=>{
+    cost += (1/minHitP(l.effect))*rerollCost(locks);
+    if(toFish.length>0 || idx<fixable.length-1){ cost+=lockCost(locks); locks++; }
+  });
+  if(toFish.length){
+    keepGood.forEach(()=>{ cost+=lockCost(locks); locks++; });
+    cost += evFinish(freeIdx,toFish,locks,excluded);
+  }
+  return Math.round(cost);
 }
 
 function rerollCost(locked){ return [1,2,3,4][Math.min(locked,3)]; }
@@ -467,14 +564,34 @@ function recommend(piece){
   //    ("on Line 1? -> Blue/Black? -> Lock Line 1"), but Cat 3's entry diamond only looks at
   //    Line 2/3 — its "Is Line 1 Blue/Black?" check lives inside the two-effects branch, so a
   //    lone Blue/Black on Line 1 with nothing on Line 2/3 keeps fishing instead.
+  // A LONE Blue/Black on Line 1 may take the Cat-2 lock route only while Cat-2-track
+  // slots remain (closure budget). Once enough pieces have claimed the no-quota
+  // finish, the rest are presumptive carriers — Cat-3 rules, whose entry diamond
+  // ignores Line 1 entirely (never lock a lone Blue/Black L1 on a Cat-3 piece).
+  const cat2Open=!(a.cat2Blocked&&a.cat2Blocked.length);
   const bbUnlocked=desiredLines.filter(l=>l.bb && !l.locked)
-    .filter(l=> l.i>0 || N===2 || anyOn23)
+    .filter(l=> l.i>0 || anyOn23 || (N===2 && cat2Open))
     .sort((x,y)=> x.i-y.i);
   if(bbUnlocked.length){
     const x=bbUnlocked[0];
+    // Keep-vs-sacrifice cost check when locking a Blue/Black L1 with a target already
+    // on Line 2/3 (the chart's red path vs its blue path with the rare roll churned).
+    let evNote='';
+    if(x.i===0 && anyOn23){
+      const excl=lines.filter(l=>!l.empty).map(l=>l.effect);
+      const landed=desiredLines.find(l=>l.i>0 && !l.locked);
+      const landedLocks=landed?1:0;
+      const freeKeep=lines.filter(l=>!l.locked && l!==x && l!==landed).map(l=>l.i);
+      const evKeep=Math.round(lockCost(lockedCount)+(landed?lockCost(lockedCount+1):0)
+        +evFinish(freeKeep,missing,lockedCount+1+landedLocks,excl));
+      const freeSac=lines.filter(l=>!l.locked && l!==landed).map(l=>l.i);
+      const evSac=Math.round((landed?lockCost(lockedCount):0)
+        +evFinish(freeSac,missing.concat([x.effect]),lockedCount+landedLocks,excl.filter(e=>e!==x.effect)));
+      evNote=` <span class="warn">Cost check: keeping this ${tierWord(x.tier)} (red path) ≈ ~${evKeep} modules to finish the piece; sacrificing it (blue path — let Line 1 churn, secure Lines 2/3, refill ${x.effect} on Line 1 last, it appears 100% of the time) ≈ ~${evSac}. The chart allows both; the difference is the price of the ${tierWord(x.tier)}'s extra value.</span>`;
+    }
     return {risk:x.i===0?'red':riskByLocks,
       title:`🔒 Lock Line ${x.i+1} — rare ${tierWord(x.tier)} ${x.effect} (${x.val}%, Tier ${x.tier})`,
-      body:`A ${tierWord(x.tier)} line (Tier ${x.tier}) is too rare to risk losing — lock it with a Custom Module.${x.i===0?` It's on Line 1, normally a poor line to lock, but a ${tierWord(x.tier)} roll is worth committing to (this is the chart's highest-risk path).`:''}`,
+      body:`A ${tierWord(x.tier)} line (Tier ${x.tier}) is too rare to risk losing — lock it with a Custom Module.${x.i===0?` It's on Line 1, normally a poor line to lock, but a ${tierWord(x.tier)} roll is worth committing to (this is the chart's highest-risk path).`:''}${evNote}`,
       cost:`Lock ≈ ${lockCost(lockedCount)} modules`, progress:prog(a), a};
   }
 
@@ -513,9 +630,26 @@ function recommend(piece){
     const x=lockNow[0];
     const why = x.i===2 ? `on Line 3, the rarest slot (30% to appear) — a hit here is hard to get back, so secure it now`
                         : `on a good line, and you now hold enough targets to commit`;
+    // Locking Line 2 with only Line 3 left condemns the last effect to a 30%-appearance
+    // line at max roll cost. Compare that route against churning the L2 catch and
+    // aiming to lock Line 3 first so the LAST fish happens on the 50% line instead.
+    let routeNote='';
+    if(x.i===1 && N===3 && missing.length===1){
+      const l3=lines[2];
+      const l3Junk=!l3.locked && !(!l3.empty && desired.includes(l3.effect) && l3.meets);
+      if(l3Junk){
+        const excl=lines.filter(l=>!l.empty).map(l=>l.effect);
+        const evA=Math.round(lockCost(lockedCount)+evFinish([2],missing,lockedCount+1,excl));
+        const poolB=effPool(excl.filter(e=>e!==x.effect));
+        const p1=LINE_P[2]*(poolB(missing[0])+poolB(x.effect));
+        const evB=Math.round(rerollCost(lockedCount)/p1 + lockCost(lockedCount)
+                  + rerollCost(lockedCount+1)/(LINE_P[1]*effPool(excl)(missing[0])));
+        routeNote=` <span class="warn">Route check: locking Line 2 means the last effect (${missing[0]}) must appear on <b>Line 3</b> — a 30% line at ${rerollCost(lockedCount+1)} modules/roll, roughly ~${evA} modules from here. Near-equal alternative (~${evB}): <b>don't lock yet</b> — keep rolling Lines 2+3 until ${missing[0]} or ${x.effect} lands on Line 3, lock Line 3, then fish Line 2 (a 50% line) last. The chart's red path locks what landed; the alternative plays the line odds. Both are expensive — that's this piece's Black-Line-1 tax, not a choice you can dodge.</span>`;
+      }
+    }
     return {risk:riskByLocks,
       title:`🔒 Lock Line ${x.i+1} — ${x.effect} (${x.val}%, Tier ${x.tier})`,
-      body:`This target is ${why}. Lock it with a Custom Module, then keep going. Tip: a temporary Custom Lock is cheaper if you'll batch value resets later.`,
+      body:`This target is ${why}. Lock it with a Custom Module, then keep going. Tip: a temporary Custom Lock is cheaper if you'll batch value resets later.${routeNote}`,
       cost:`Lock ≈ ${lockCost(lockedCount)} modules`, progress:prog(a), a};
   }
   // 3) Raise a should-lock target that's below min (so it can then be locked)
@@ -536,7 +670,10 @@ function recommend(piece){
     const freeTxt = lockedCount>0 ? unlocked.map(l=>'Line '+(l.i+1)).join(' / ') : 'Line 2 / 3';
     const where = onlyL1 ? 'Line 1 (the only free line — it rolls 100% of the time, so this is quick)' : freeTxt;
     const bbL1=desiredLines.find(l=>l.i===0 && l.bb && !l.locked);
-    const bbNote=bbL1?` <span class="warn">Heads-up: your ${tierWord(bbL1.tier)} ${bbL1.effect} on Line 1 will reroll too — the chart accepts losing it here, but you can temporarily Custom-Lock Line 1 to protect it while fishing.</span>`:'';
+    const carrierWhy=(bbL1 && a.cat2Blocked && a.cat2Blocked.length)
+      ? ` This piece is a presumptive ${a.cat2Blocked.join('/')} carrier — the Cat-2 finish slots are already claimed by other pieces — so Cat-3 rules apply here, and the Cat-3 chart never locks a lone ${tierWord(bbL1.tier)} Line 1.`
+      : '';
+    const bbNote=bbL1?` <span class="warn">Heads-up: your ${tierWord(bbL1.tier)} ${bbL1.effect} on Line 1 will reroll too — the chart accepts losing it here, but you can temporarily Custom-Lock Line 1 to protect it while fishing.${carrierWhy}</span>`:'';
     return {risk:riskByLocks,
       title:`🔁 Change Effects until you get ${haveSome?'another target':'a target'} (${missing.join(' / ')}) on ${onlyL1?'Line 1':freeTxt}`,
       body:`${haveSome?`You have ${presentCount} target${presentCount>1?'s':''} showing so far. `:''}Press <b>Change Effects</b> until one of <b>${missing.join(', ')}</b> lands on ${where}. Keep the free lines unlocked — that's the cheapest way to fish. Then reset its value if it's below the minimum.${bbNote}`,
@@ -593,7 +730,10 @@ function renderBuildSummary(){
   let warn='';
   if(total>12) warn=`<div class="warn">⚠ ${total} lines required but a unit only has 12 (4 pieces × 3 lines) — reduce something.</div>`;
   else if(effs.filter(e=>reqOf(e)===4).length>3) warn=`<div class="warn">⚠ more than three ×4 effects can't fit — a piece holds max 3 lines.</div>`;
-  el.innerHTML=`<b>Build: ${total} / 12 lines</b> &nbsp;·&nbsp; ${parts} &nbsp;<span class="muted">— secured ${secured} of ${total}</span>${warn}`;
+  let evTot=0, evOk=true;
+  PIECES.forEach(p=>{ const c=pieceCostEstimate(p); if(c===null||!isFinite(c)) evOk=evOk&&(c===null); else evTot+=c; });
+  const evTxt=(evOk&&evTot>0)?` &nbsp;·&nbsp; <span class="muted">📉 ~${Math.round(evTot)} modules to finish everything (rough EV)</span>`:'';
+  el.innerHTML=`<b>Build: ${total} / 12 lines</b> &nbsp;·&nbsp; ${parts} &nbsp;<span class="muted">— secured ${secured} of ${total}</span>${evTxt}${warn}`;
 }
 
 function renderTabs(){
@@ -672,6 +812,13 @@ function renderAdvice(){
   const chip=`<span class="pill" style="background:var(--accent);color:#fff;border-color:var(--accent);cursor:pointer" onclick="state.active='${target}';save();renderAll()">On ${target} ▸</span>`;
   const step=h(`<div class="step ${rec.risk}"><div style="margin-bottom:6px">${chip}</div><h3>${rec.title}</h3><div>${rec.body||''}</div>${rec.cost?`<div style="margin-top:8px"><span class="pill">${rec.cost}</span><span class="pill">${riskLabel(rec.risk)}</span></div>`:''}</div>`);
   adv.appendChild(step);
+
+  // rough expected cost for the target piece (makes expensive paths visible upfront)
+  if(reqd && !allMet){
+    const est=pieceCostEstimate(target);
+    if(est!==null && isFinite(est) && est>0)
+      adv.appendChild(h(`<div class="muted" style="font-size:13px;margin-top:6px">📉 Rough cost to finish ${target} from here: <b>~${est} modules</b> <span style="opacity:.75">(expected value — actual luck swings hard both ways)</span></div>`));
+  }
 
   // open-quota / forced-carrier context under the card
   if(reqd && !allMet && Object.keys(plan.forcedOn||{}).length){
