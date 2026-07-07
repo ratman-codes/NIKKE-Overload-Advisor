@@ -345,8 +345,13 @@ function recommend(piece){
   const anyOn23=desiredLines.some(l=>l.i>=1);   // a target anywhere on Line 2/3 (any value, locked or not)
 
   // 0) Preserve — lock an unlocked Blue/Black target ("Is Line X Blue/Black? YES -> Lock").
-  //    Priority: Line 1 first (the chart's "Lock Line 1" red path), then Line 3, then Line 2.
-  const bbUnlocked=desiredLines.filter(l=>l.bb && !l.locked).sort((x,y)=> x.i-y.i);
+  //    Line-1 scope differs by chart: Cat 2 locks a Blue/Black Line 1 even as the lone target
+  //    ("on Line 1? -> Blue/Black? -> Lock Line 1"), but Cat 3's entry diamond only looks at
+  //    Line 2/3 — its "Is Line 1 Blue/Black?" check lives inside the two-effects branch, so a
+  //    lone Blue/Black on Line 1 with nothing on Line 2/3 keeps fishing instead.
+  const bbUnlocked=desiredLines.filter(l=>l.bb && !l.locked)
+    .filter(l=> l.i>0 || N===2 || anyOn23)
+    .sort((x,y)=> x.i-y.i);
   if(bbUnlocked.length){
     const x=bbUnlocked[0];
     return {risk:x.i===0?'red':riskByLocks,
@@ -412,9 +417,11 @@ function recommend(piece){
     // with nothing locked yet, the chart wants targets specifically on Line 2/3.
     const freeTxt = lockedCount>0 ? unlocked.map(l=>'Line '+(l.i+1)).join(' / ') : 'Line 2 / 3';
     const where = onlyL1 ? 'Line 1 (the only free line — it rolls 100% of the time, so this is quick)' : freeTxt;
+    const bbL1=desiredLines.find(l=>l.i===0 && l.bb && !l.locked);
+    const bbNote=bbL1?` <span class="warn">Heads-up: your ${tierWord(bbL1.tier)} ${bbL1.effect} on Line 1 will reroll too — the chart accepts losing it here, but you can temporarily Custom-Lock Line 1 to protect it while fishing.</span>`:'';
     return {risk:riskByLocks,
       title:`🔁 Change Effects until you get ${haveSome?'another target':'a target'} (${missing.join(' / ')}) on ${onlyL1?'Line 1':freeTxt}`,
-      body:`${haveSome?`You have ${presentCount} target${presentCount>1?'s':''} showing so far. `:''}Press <b>Change Effects</b> until one of <b>${missing.join(', ')}</b> lands on ${where}. Keep the free lines unlocked — that's the cheapest way to fish. Then reset its value if it's below the minimum.`,
+      body:`${haveSome?`You have ${presentCount} target${presentCount>1?'s':''} showing so far. `:''}Press <b>Change Effects</b> until one of <b>${missing.join(', ')}</b> lands on ${where}. Keep the free lines unlocked — that's the cheapest way to fish. Then reset its value if it's below the minimum.${bbNote}`,
       cost:`Change ≈ ${rerollCost(lockedCount)} module(s) each`, progress:prog(a), a};
   }
   // 5) All N types present — raise any remaining below-min line (usually the last one on Line 1)
@@ -449,15 +456,16 @@ function renderEffGrid(){
   });
 }
 function syncN(){
+  // Never overwrite the user's chosen Category — analyze() soft-clamps the EFFECTIVE
+  // category to the number of marked Targets, so marking effects one at a time must
+  // not degrade the setting (it used to clamp N to 1 at the first marked Target).
   const d=desiredSet().length;
   const sel=document.getElementById('targetN'); sel.innerHTML='';
-  const max=Math.max(1,Math.min(3,d||3));
-  for(let i=1;i<=max;i++){const o=document.createElement('option');o.value=i;o.textContent=i;sel.appendChild(o);}
-  if(state.N>max) state.N=max;
-  if(d && state.N>d) state.N=d;
+  for(let i=1;i<=3;i++){const o=document.createElement('option');o.value=i;o.textContent=i;sel.appendChild(o);}
   sel.value=state.N;
-  const cat={1:'Category 1 — 1 effect',2:'Category 2 — 2 effects (recommended baseline)',3:'Category 3 — 3 effects (perfectionist)'}[state.N];
-  document.getElementById('catLabel').textContent=cat||'';
+  const cat={1:'Category 1 — 1 effect',2:'Category 2 — 2 effects',3:'Category 3 — 3 effects'}[state.N];
+  const note=(d&&d<state.N)?` (only ${d} Target${d>1?'s':''} marked — advice aims for ${d} until you mark more)`:'';
+  document.getElementById('catLabel').textContent=(cat||'')+note;
 }
 
 function renderTabs(){
