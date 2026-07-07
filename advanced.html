@@ -493,33 +493,79 @@ function buildBenchmarkEV(){
   return isFinite(tot)?Math.round(tot):null;
 }
 
-// Rough E[modules] for a piece to finish its current must-set following the advice.
-function pieceCostEstimate(p){
-  if(!reqEffects().length) return null;
-  const a=analyze(p);
-  if(a.overflow) return null;
-  let locks=a.lockedCount, cost=0;
+// Rough E[modules] for piece p to finish an explicit target set, following the advice.
+function pieceCostForTargets(p,desired,cls){
+  cls=cls||unitAnalysis().cls[p];
+  let locks=cls.filter(l=>l.locked).length, cost=0;
   const excluded=[]; const freeIdx=[]; const keepGood=[]; const fixable=[];
-  a.lines.forEach(l=>{
+  cls.forEach(l=>{
     if(l.locked){ if(!l.empty) excluded.push(l.effect); return; }
-    if(!l.empty && a.desired.includes(l.effect)){
+    if(!l.empty && desired.includes(l.effect)){
       excluded.push(l.effect);
       if(l.meets) keepGood.push(l); else fixable.push(l);
       return;
     }
     freeIdx.push(l.i);
   });
-  const present=a.lines.filter(l=>!l.empty).map(l=>l.effect);
-  const toFish=a.desired.filter(e=>!present.includes(e));
+  const present=cls.filter(l=>!l.empty).map(l=>l.effect);
+  const toFish=desired.filter(e=>!present.includes(e));
   fixable.forEach((l,idx)=>{
     cost += (1/minHitP(l.effect))*rerollCost(locks);
     if(toFish.length>0 || idx<fixable.length-1){ cost+=lockCost(locks); locks++; }
   });
   if(toFish.length){
-    keepGood.forEach(()=>{ cost+=lockCost(locks); locks++; });
+    // charge keeper locks only where the engine actually locks: Line 3 on sight,
+    // Line 2 once the piece holds N-1 targets; a lone Line-1/Line-2 keeper keeps
+    // rolling unlocked (Keep/Change ratchet retains it on the good configs)
+    const present=keepGood.length+fixable.length;
+    keepGood.forEach(l=>{
+      const lockNow=l.i===2 || (l.i===1 && present>=desired.length-1);
+      if(lockNow){ cost+=lockCost(locks); locks++; }
+    });
     cost += evFinish(freeIdx,toFish,locks,excluded);
   }
-  return Math.round(cost);
+  return cost;
+}
+function pieceCostEstimate(p){
+  if(!reqEffects().length) return null;
+  const a=analyze(p);
+  if(a.overflow) return null;
+  const c=pieceCostForTargets(p,a.desired,a.lines);
+  return isFinite(c)?Math.round(c):null;
+}
+// Whole-build remaining cost from the CURRENT state. Piece musts are summed
+// directly; open quota that no piece is committed to yet is assigned to the
+// cheapest eligible carriers (same fixed-assignment convention as the from-
+// scratch benchmark, so on an untouched board the two numbers agree).
+function totalRemainingEV(){
+  if(!reqEffects().length) return null;
+  const plan=buildPlan();
+  const cls=plan.ua.cls;
+  const sets={}, est={};
+  for(const p of PIECES){
+    if(plan.sets[p].overflow) return null;
+    sets[p]=plan.sets[p].must.slice();
+    est[p]=pieceCostForTargets(p,sets[p],cls[p]);
+  }
+  reqEffects().forEach(e=>{
+    // pieces already committed to fishing/fixing e have its cost inside est[p]
+    const committed=PIECES.filter(p=>sets[p].includes(e)&&!plan.ua.keepers[e].has(p)).length;
+    let k=Math.max(0,(plan.ua.remaining[e]||0)-committed);
+    while(k>0){
+      let best=null;
+      PIECES.forEach(p=>{
+        const lockedNonTarget=cls[p].filter(l=>l.locked&&(l.empty||!sets[p].includes(l.effect))).length;
+        if(sets[p].includes(e)||sets[p].length>=3-lockedNonTarget) return;
+        const withE=pieceCostForTargets(p,sets[p].concat([e]),cls[p]);
+        const marg=withE-est[p];
+        if(isFinite(marg)&&(!best||marg<best.marg)) best={p,marg,withE};
+      });
+      if(!best) break;
+      sets[best.p].push(e); est[best.p]=best.withE; k--;
+    }
+  });
+  let tot=0; PIECES.forEach(p=>{ if(isFinite(est[p])) tot+=est[p]; });
+  return Math.round(tot);
 }
 
 function rerollCost(locked){ return [1,2,3,4][Math.min(locked,3)]; }
@@ -768,10 +814,10 @@ function renderBuildSummary(){
   let warn='';
   if(total>12) warn=`<div class="warn">⚠ ${total} lines required but a unit only has 12 (4 pieces × 3 lines) — reduce something.</div>`;
   else if(effs.filter(e=>reqOf(e)===4).length>3) warn=`<div class="warn">⚠ more than three ×4 effects can't fit — a piece holds max 3 lines.</div>`;
-  let evTot=0, evOk=true;
-  PIECES.forEach(p=>{ const c=pieceCostEstimate(p); if(c===null||!isFinite(c)) evOk=evOk&&(c===null); else evTot+=c; });
+  const evTot=totalRemainingEV();
+  const evOk=evTot!==null;
   const bench=buildBenchmarkEV();
-  const evTxt=(evOk&&evTot>0)?` &nbsp;·&nbsp; <span class="muted">📉 ~${Math.round(evTot)} modules left from here (rough EV)</span>`:'';
+  const evTxt=(evOk&&evTot>0)?` &nbsp;·&nbsp; <span class="muted">📉 ~${Math.round(evTot)} modules left from here (rough EV, incl. unassigned quota)</span>`:'';
   const benchTxt=bench?` &nbsp;·&nbsp; <span class="muted">📦 this build from scratch ≈ ~${bench} modules on average</span>`:'';
   el.innerHTML=`<b>Build: ${total} / 12 lines</b> &nbsp;·&nbsp; ${parts} &nbsp;<span class="muted">— secured ${secured} of ${total}</span>${evTxt}${benchTxt}${warn}`;
   // compact always-visible chips in the collapsed header
@@ -864,8 +910,16 @@ function renderAdvice(){
   // rough expected cost for the target piece (makes expensive paths visible upfront)
   if(reqd && !allMet){
     const est=pieceCostEstimate(target);
-    if(est!==null && isFinite(est) && est>0)
-      adv.appendChild(h(`<div class="muted" style="font-size:13px;margin-top:6px">📉 Rough cost to finish ${target} from here: <b>~${est} modules</b> <span style="opacity:.75">(expected value — actual luck swings hard both ways)</span></div>`));
+    if(est!==null && isFinite(est) && est>0){
+      let carryTxt='';
+      const aT=rec.a;
+      if(aT && aT.optional && aT.optional.length && !aT.overflow){
+        const withOpt=pieceCostForTargets(target, aT.desired.concat(aT.optional), aT.lines);
+        const marg=Math.round(withOpt-est);
+        if(isFinite(marg) && marg>0) carryTxt=` <span style="opacity:.75">+~${marg} more if it ends up carrying ${aT.optional.map(e=>EFF_ABBR[e]||e).join('/')}</span>`;
+      }
+      adv.appendChild(h(`<div class="muted" style="font-size:13px;margin-top:6px">📉 Rough cost to finish ${target}'s must-haves: <b>~${est} modules</b>${carryTxt} <span style="opacity:.75">(expected value — actual luck swings hard both ways)</span></div>`));
+    }
   }
 
   // open-quota / forced-carrier context under the card
