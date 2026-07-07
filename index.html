@@ -22,8 +22,8 @@
 <body>
   <div class="topbar">
     <span class="brand">NIKKE Overload Advisor</span>
-    <div class="ttab" id="tabSimple">Simple</div>
-    <div class="ttab" id="tabAdv">Advanced</div>
+    <div class="ttab" id="tabAdv">Whole unit</div>
+    <div class="ttab" id="tabSimple">By gear piece</div>
     <span class="hint" id="hintTxt"></span>
   </div>
   <iframe id="fSimple" src="simple.html" title="Simple advisor"></iframe>
@@ -35,7 +35,7 @@
   const KEY='nikkeOLtabChoice';
   const hints={
     simple:'Per-piece chart advisor — pick a Category per piece, follow the flowchart.',
-    adv:'Whole-unit planner (beta) — set ×counts like Ele ×4 · ATK ×4 · Ammo ×2 and get one next move across all four pieces.'
+    adv:'Whole-unit planner — set ×counts like Ele ×4 · ATK ×4 · Ammo ×2 and get one next move across all four pieces.'
   };
   function sel(which){
     document.getElementById('tabSimple').classList.toggle('active',which==='simple');
@@ -47,7 +47,7 @@
   }
   document.getElementById('tabSimple').onclick=()=>sel('simple');
   document.getElementById('tabAdv').onclick=()=>sel('adv');
-  sel(localStorage.getItem(KEY)==='adv'?'adv':'simple');
+  sel(localStorage.getItem(KEY)==='simple'?'simple':'adv');   // Whole unit is the default
 </script>
 </body>
 </html>
