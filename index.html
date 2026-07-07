@@ -89,7 +89,7 @@
   <!-- ================= TARGETS ================= -->
   <div class="card">
     <h2>1 · What are you building for this unit?</h2>
-    <p class="muted" style="margin-top:-6px">Mark the effects you want. <b>Essential</b> + <b>Ideal</b> both count as "desired". <b>Passable</b> = keep only as a bonus. (Remember: a gear piece can hold each stat type only once.)</p>
+    <p class="muted" style="margin-top:-6px">Mark the effects you want as <b>Target</b> (the guide's Essential &amp; Ideal — the reroll logic treats them identically). <b>Passable</b> = keep only as a bonus, never aimed for. (Remember: a gear piece can hold each stat type only once.)</p>
     <div id="effGrid" class="eff-grid"></div>
     <div class="row" style="margin-top:14px">
       <label>Desired lines wanted <b>per piece</b> (Category):</label>
@@ -245,8 +245,8 @@ function tierWord(t){ return t>=15?'Black':(t>=12?'Blue':''); }
 
 /* ============================ STATE ============================ */
 const DEFAULT = {
-  roles:{},              // effect -> 'Essential'|'Ideal'|'Passable'
-  N:2,
+  roles:{},              // effect -> 'Target'|'Passable'
+  N:3,
   active:'Head',
   pieces:{}              // piece -> [{effect:'',tier:11,locked:false} x3]
 };
@@ -254,12 +254,20 @@ PIECES.forEach(p=>DEFAULT.pieces[p]=[0,1,2].map(()=>({effect:'',tier:11,locked:f
 
 let state = load();
 function load(){
-  try{ const s=JSON.parse(localStorage.getItem('nikkeOL')); if(s&&s.pieces) return Object.assign(JSON.parse(JSON.stringify(DEFAULT)),s); }catch(e){}
+  try{
+    const s=JSON.parse(localStorage.getItem('nikkeOL'));
+    if(s&&s.pieces){
+      const st=Object.assign(JSON.parse(JSON.stringify(DEFAULT)),s);
+      // migrate saves from when Essential/Ideal were separate options (logic always treated them the same)
+      Object.keys(st.roles).forEach(e=>{ if(st.roles[e]==='Essential'||st.roles[e]==='Ideal') st.roles[e]='Target'; });
+      return st;
+    }
+  }catch(e){}
   return JSON.parse(JSON.stringify(DEFAULT));
 }
 function save(){ localStorage.setItem('nikkeOL', JSON.stringify(state)); }
 
-function desiredSet(){ return EFF_NAMES.filter(e=>state.roles[e]==='Essential'||state.roles[e]==='Ideal'); }
+function desiredSet(){ return EFF_NAMES.filter(e=>state.roles[e]==='Target'); }
 function passableSet(){ return EFF_NAMES.filter(e=>state.roles[e]==='Passable'); }
 
 /* ============================ ANALYSIS ============================ */
@@ -295,7 +303,7 @@ function recommend(piece){
 
   if(desired.length===0)
     return {risk:'green',title:'Pick your target effects first',
-      body:'Mark at least one effect as Essential or Ideal in section 1.',progress:0,a};
+      body:'Mark at least one effect as Target in section 1.',progress:0,a};
 
   // DONE
   if(distinctGood.size>=N)
@@ -435,7 +443,7 @@ function renderEffGrid(){
     const sel=state.roles[e]||'Off';
     const node=h(`<div class="eff"><span>${e} <small>min ${EFFECTS[e].min>0?EFFECTS[e].min+'%':'—'}</small></span></div>`);
     const s=document.createElement('select');
-    ['Off','Essential','Ideal','Passable'].forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=r;if(r===sel)o.selected=true;s.appendChild(o);});
+    ['Off','Target','Passable'].forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=r;if(r===sel)o.selected=true;s.appendChild(o);});
     s.onchange=()=>{ if(s.value==='Off') delete state.roles[e]; else state.roles[e]=s.value; syncN(); save(); renderAll(); };
     node.appendChild(s); g.appendChild(node);
   });
