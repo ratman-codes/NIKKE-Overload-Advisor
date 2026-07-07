@@ -84,6 +84,10 @@
   @keyframes swpulse{0%,100%{box-shadow:0 0 0 0 rgba(124,92,255,.55)}50%{box-shadow:0 0 0 6px rgba(124,92,255,0)}}
   .tab.next{box-shadow:0 0 0 2px var(--accent2)}
   .tab .nextTag{display:inline-block;margin-left:6px;font-size:10.5px;font-weight:800;background:var(--accent2);color:#fff;border-radius:8px;padding:0 6px;vertical-align:middle}
+  .reqsum{cursor:pointer;padding:0}
+  .reqsum::marker{color:var(--accent)}
+  #reqPanel .eff{padding:4px 8px}
+  #reqPanel .eff-grid{grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:6px;margin-top:4px}
 </style>
 </head>
 <body>
@@ -93,10 +97,16 @@
 
   <!-- ================= TARGETS ================= -->
   <div class="card">
-    <h2>1 · What does this unit need across all four pieces?</h2>
-    <p class="muted" style="margin-top:-6px">For each effect, set <b>how many of the 4 pieces</b> need it. Elemental &amp; ATK are usually <b>×4</b> (every piece); Max Ammo often only <b>×2</b> or <b>×3</b> — that's the "10/12" / "11/12" shorthand. <b>Passable</b> = keep as a bonus if it shows up, never aimed for. Don't pre-plan which pieces get the ×2/×3 effects — the tool assigns them to whichever pieces roll them first (that's the cheap way), and marks other pieces done at 2 lines once a quota is covered.</p>
-    <div id="effGrid" class="eff-grid"></div>
-    <div id="buildSummary" style="margin-top:14px;font-size:14px"></div>
+    <details id="reqPanel">
+      <summary class="reqsum">
+        <h2 style="display:inline;margin:0">1 · Unit requirements</h2>
+        <span id="reqChips" style="margin-left:10px"></span>
+        <span class="muted" style="font-size:12px;margin-left:8px">(click to edit)</span>
+      </summary>
+      <p class="muted" style="margin-top:10px;font-size:13px">Set how many of the 4 pieces need each effect — Ele &amp; ATK are usually <b>×4</b>, Ammo often <b>×2/×3</b> (the "10/12" shorthand). <b>Passable</b> = bonus only. Don't pre-plan which pieces carry the ×2/×3 — the tool assigns them to whoever rolls them first.</p>
+      <div id="effGrid" class="eff-grid"></div>
+      <div id="buildSummary" style="margin-top:12px;font-size:14px"></div>
+    </details>
   </div>
 
   <!-- ================= PIECES ================= -->
@@ -461,6 +471,28 @@ function evFinish(freeLines,targets,locks,excluded){
   });
   return ev;
 }
+// Benchmark: expected modules for the WHOLE build starting from four empty pieces.
+// Quota effects are assigned to pieces up-front (balanced), so this slightly
+// overstates the cost vs the opportunistic play the tool actually advises —
+// a fair "price tag" for comparing 9/12 vs 10/12 vs 11/12 builds.
+function buildBenchmarkEV(){
+  const effs=reqEffects();
+  if(!effs.length || totalReqLines()>12) return null;
+  const sets=[[],[],[],[]];
+  let feasible=true;
+  effs.slice().sort((a,b)=>reqOf(b)-reqOf(a)).forEach(e=>{
+    let n=reqOf(e);
+    [0,1,2,3].sort((x,y)=>sets[x].length-sets[y].length).forEach(i=>{
+      if(n>0 && !sets[i].includes(e) && sets[i].length<3){ sets[i].push(e); n--; }
+    });
+    if(n>0) feasible=false;
+  });
+  if(!feasible) return null;
+  let tot=0;
+  sets.forEach(T=>{ if(T.length) tot+=evFinish([0,1,2],T,0,[]); });
+  return isFinite(tot)?Math.round(tot):null;
+}
+
 // Rough E[modules] for a piece to finish its current must-set following the advice.
 function pieceCostEstimate(p){
   if(!reqEffects().length) return null;
@@ -719,10 +751,16 @@ function renderEffGrid(){
     node.appendChild(s); g.appendChild(node);
   });
 }
+const EFF_ABBR={'Elemental Damage':'Ele','ATK':'ATK','Max Ammo':'Ammo','Charge Speed':'Chg Spd','Hit Rate':'Hit','Charge Damage':'Chg Dmg','Critical Rate':'Crit','Critical Damage':'Crit Dmg','DEF':'DEF'};
 function renderBuildSummary(){
   const el=document.getElementById('buildSummary');
-  const effs=reqEffects();
-  if(!effs.length){ el.innerHTML='<span class="muted">No requirements set yet — pick ×counts above.</span>'; return; }
+  const chips=document.getElementById('reqChips');
+  const effs=reqEffects(), pass=passableSet();
+  if(!effs.length){
+    el.innerHTML='<span class="muted">No requirements set yet — pick ×counts above.</span>';
+    if(chips) chips.innerHTML='<span class="muted">none set yet</span>';
+    return;
+  }
   const total=totalReqLines();
   const ua=unitAnalysis();
   const secured=effs.reduce((s,e)=>s+(reqOf(e)-ua.remaining[e]),0);
@@ -732,8 +770,18 @@ function renderBuildSummary(){
   else if(effs.filter(e=>reqOf(e)===4).length>3) warn=`<div class="warn">⚠ more than three ×4 effects can't fit — a piece holds max 3 lines.</div>`;
   let evTot=0, evOk=true;
   PIECES.forEach(p=>{ const c=pieceCostEstimate(p); if(c===null||!isFinite(c)) evOk=evOk&&(c===null); else evTot+=c; });
-  const evTxt=(evOk&&evTot>0)?` &nbsp;·&nbsp; <span class="muted">📉 ~${Math.round(evTot)} modules to finish everything (rough EV)</span>`:'';
-  el.innerHTML=`<b>Build: ${total} / 12 lines</b> &nbsp;·&nbsp; ${parts} &nbsp;<span class="muted">— secured ${secured} of ${total}</span>${evTxt}${warn}`;
+  const bench=buildBenchmarkEV();
+  const evTxt=(evOk&&evTot>0)?` &nbsp;·&nbsp; <span class="muted">📉 ~${Math.round(evTot)} modules left from here (rough EV)</span>`:'';
+  const benchTxt=bench?` &nbsp;·&nbsp; <span class="muted">📦 this build from scratch ≈ ~${bench} modules on average</span>`:'';
+  el.innerHTML=`<b>Build: ${total} / 12 lines</b> &nbsp;·&nbsp; ${parts} &nbsp;<span class="muted">— secured ${secured} of ${total}</span>${evTxt}${benchTxt}${warn}`;
+  // compact always-visible chips in the collapsed header
+  if(chips){
+    const t=effs.map(e=>`<span class="badge ${ua.remaining[e]?'b-good':'b-lock'}" title="${e}${ua.remaining[e]?' — '+ua.remaining[e]+' to find':' — done'}">${EFF_ABBR[e]||e} ×${reqOf(e)}${ua.remaining[e]?'':' ✓'}</span>`).join(' ');
+    const p=pass.length?' '+pass.map(e=>`<span class="badge b-other" title="Passable bonus">${EFF_ABBR[e]||e} ~</span>`).join(' '):'';
+    const evChip=(evOk&&evTot>0)?` <span class="badge b-other" title="Rough expected modules remaining from the current state${bench?' / full-build-from-scratch average':''}">📉 ~${Math.round(evTot)} left${bench?` / ~${bench} full`:''}</span>`:'';
+    const warnChip=warn?' <span class="badge b-low">⚠</span>':'';
+    chips.innerHTML=`${t}${p} <span class="badge b-other">${total}/12</span> <span class="badge b-other">secured ${secured}/${total}</span>${evChip}${warnChip}`;
+  }
 }
 
 function renderTabs(){
@@ -970,6 +1018,14 @@ document.getElementById('resetAll').onclick=()=>{
 buildStatTable();
 renderEffGrid();
 renderAll();
+// requirements panel: collapsed once a build is configured, expanded for new users;
+// manual toggles are remembered
+(function(){
+  const rp=document.getElementById('reqPanel');
+  const saved=localStorage.getItem('nikkeOL2reqOpen');
+  rp.open = saved===null ? reqEffects().length===0 : saved==='1';
+  rp.addEventListener('toggle',()=>localStorage.setItem('nikkeOL2reqOpen',rp.open?'1':'0'));
+})();
 </script>
 </body>
 </html>
