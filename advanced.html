@@ -852,9 +852,15 @@ function recommend(piece){
       ? ` This piece is a presumptive ${a.cat2Blocked.join('/')} carrier — the Cat-2 finish slots are already claimed by other pieces — so Cat-3 rules apply here, and the Cat-3 chart never locks a lone ${tierWord(bbL1.tier)} Line 1.`
       : '';
     const bbNote=a.bbSacNote?a.bbSacNote:(bbL1?` <span class="warn">Heads-up: your ${tierWord(bbL1.tier)} ${bbL1.effect} on Line 1 will reroll too — the chart accepts losing it here, but you can temporarily Custom-Lock Line 1 to protect it while fishing.${carrierWhy}</span>`:'');
+    // Fish for types that are ABSENT — a present-but-below-min target is a different
+    // situation (it churns while fishing, and gets value-reset at the end if it sticks),
+    // so listing it as something to "get" reads as a contradiction.
+    const absent=desired.filter(e=>!presentTypes.has(e));
+    const lowPresent=desiredLines.filter(l=>!l.meets && !l.locked && !l.bb);
+    const lowNote=lowPresent.length?` <span class="muted">Your ${lowPresent.map(l=>`${l.effect} on Line ${l.i+1} (${l.val}%, below its minimum)`).join(' and ')} will keep rerolling during this — that's fine: it may churn and re-land, and once the missing type${absent.length>1?'s are':' is'} secured, whatever's left below minimum gets value-reset at the end.${lowPresent.some(l=>l.i===0)?' A non-Blue/Black Line 1 never earns a lock — it just needs to survive to the finish.':''}</span>`:'';
     return {risk:riskByLocks,
-      title:`🔁 Change Effects until you get ${haveSome?'another target':'a target'} (${missing.join(' / ')}) on ${onlyL1?'Line 1':freeTxt}`,
-      body:`${haveSome?`You have ${presentCount} target${presentCount>1?'s':''} showing so far. `:''}Press <b>Change Effects</b> until one of <b>${missing.join(', ')}</b> lands on ${where}. Keep the free lines unlocked — that's the cheapest way to fish. Then reset its value if it's below the minimum.${bbNote}`,
+      title:`🔁 Change Effects until you get ${haveSome?'another target':'a target'} (${absent.join(' / ')}) on ${onlyL1?'Line 1':freeTxt}`,
+      body:`${haveSome?`You have ${presentCount} target${presentCount>1?'s':''} showing so far. `:''}Press <b>Change Effects</b> until one of <b>${absent.join(', ')}</b> lands on ${where}. Keep the free lines unlocked — that's the cheapest way to fish. Then reset its value if it's below the minimum.${lowNote}${bbNote}`,
       cost:`Change ≈ ${rerollCost(lockedCount)} module(s) each`, progress:prog(a), a};
   }
   // 5) All N types present — raise any remaining below-min line (usually the last one on Line 1)
