@@ -14,6 +14,8 @@
   .ttab{padding:7px 18px;border-radius:8px;border:1px solid var(--line);background:#1c232d;cursor:pointer;font-weight:600;user-select:none}
   .ttab:hover{border-color:var(--accent)}
   .ttab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .treset{padding:7px 14px;border-radius:8px;border:1px solid #5a1f1c;background:#1c232d;color:#ff8a80;cursor:pointer;font-weight:600;font-size:13px;margin-left:6px}
+  .treset:hover{border-color:#ff8a80}
   .hint{color:var(--muted);font-size:12.5px;margin-left:auto}
   iframe{border:0;flex:1;width:100%;display:none;background:var(--bg)}
   iframe.show{display:block}
@@ -24,6 +26,7 @@
     <span class="brand">NIKKE Overload Advisor</span>
     <div class="ttab" id="tabAdv">Whole unit</div>
     <div class="ttab" id="tabSimple">By gear piece</div>
+    <button class="treset" id="btnReset" title="Clears the active tab's saved data (requirements/targets and all four gear pieces)">🗑 Reset</button>
     <span class="hint" id="hintTxt"></span>
   </div>
   <iframe id="fSimple" src="simple.html" title="Simple advisor"></iframe>
@@ -47,6 +50,12 @@
   }
   document.getElementById('tabSimple').onclick=()=>sel('simple');
   document.getElementById('tabAdv').onclick=()=>sel('adv');
+  // Reset acts on whichever tab is showing; each inner app owns its confirm + wipe.
+  document.getElementById('btnReset').onclick=()=>{
+    const which=document.getElementById('tabSimple').classList.contains('active')?'fSimple':'fAdv';
+    const w=document.getElementById(which).contentWindow;
+    if(w && typeof w.resetEverything==='function') w.resetEverything();
+  };
   sel(localStorage.getItem(KEY)==='simple'?'simple':'adv');   // Whole unit is the default
 </script>
 </body>

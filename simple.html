@@ -79,6 +79,18 @@
   .ftag.orange{background:var(--orangebg);color:#e0a94a;border-color:#4a3714}
   .ftag.red{background:var(--redbg);color:#ff8a80;border-color:#5a1f1c}
   .ftag.green{background:var(--greenbg);color:#5fd67a;border-color:#204a2b}
+  /* declutter layout */
+  .warnline{display:flex;gap:6px;align-items:baseline;border:1px solid #4a3714;background:linear-gradient(90deg,var(--orangebg),var(--panel) 60%);border-radius:10px;padding:8px 13px;font-size:13px;margin-bottom:18px}
+  .reqsum{cursor:pointer;padding:0}
+  .reqsum::marker{color:var(--accent)}
+  #reqPanel .eff{padding:4px 8px}
+  #reqPanel .eff-grid{grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:6px;margin-top:4px}
+  .linerow{grid-template-columns:52px minmax(140px,1.2fr) 150px 78px 1fr}
+  .lbadges{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+  .why{margin-top:9px;font-size:13px}
+  .why summary{color:var(--accent);font-weight:600}
+  .why .wb{display:grid;gap:7px;margin-top:8px;color:var(--muted)}
+  @media (max-width:680px){ .linerow{grid-template-columns:44px 1fr 1fr 70px} .lbadges{grid-column:1/-1;justify-content:flex-start} }
 </style>
 </head>
 <body>
@@ -86,20 +98,24 @@
   <h1>NIKKE Overload Reroll Advisor</h1>
   <p class="sub">Tells you the single best next move — Change Effects, Reset Attributes, or Lock — based on Prydwen's reroll logic. Set your target, enter what each gear piece shows, and follow the step.</p>
 
-  <div style="border:1px solid #4a3714;background:linear-gradient(90deg,var(--orangebg),var(--panel) 60%);border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:18px">
-    ⚠️ <b>Guide only — trust your own judgment.</b> This tool encodes one interpretation of the community flowcharts and may contain bugs, mistakes, or unhandled edge cases; sanity-check anything expensive before committing modules. RNG swings hard in both directions — roll according to your own rock economy and stop whenever your budget says stop.
-  </div>
+  <div class="warnline">⚠️&nbsp;<span><b style="color:#e0a94a">Guide only — use your own judgment.</b> Sanity-check expensive moves; RNG swings hard in both directions. <details style="display:inline"><summary style="display:inline;cursor:pointer;color:var(--accent)">more</summary> <span class="muted">This tool encodes one interpretation of the community flowcharts and may contain bugs, mistakes, or unhandled edge cases — sanity-check anything expensive before committing modules. Roll according to your own rock economy and stop whenever your budget says stop.</span></details></span></div>
 
   <!-- ================= TARGETS ================= -->
   <div class="card">
-    <h2>1 · What are you building for this unit?</h2>
-    <p class="muted" style="margin-top:-6px">Mark the effects you want as <b>Target</b> (the guide's Essential &amp; Ideal — the reroll logic treats them identically). <b>Passable</b> = keep only as a bonus, never aimed for. (Remember: a gear piece can hold each stat type only once.)</p>
-    <div id="effGrid" class="eff-grid"></div>
-    <div class="row" style="margin-top:14px">
-      <label>Desired lines wanted <b>per piece</b> (Category):</label>
-      <select id="targetN"></select>
-      <span id="catLabel" class="muted"></span>
-    </div>
+    <details id="reqPanel">
+      <summary class="reqsum">
+        <h2 style="display:inline;margin:0">1 · Targets</h2>
+        <span id="tgtChips" style="margin-left:10px"></span>
+        <span class="muted" style="font-size:12px;margin-left:8px">(click to edit)</span>
+      </summary>
+      <p class="muted" style="margin-top:10px;font-size:13px">Mark the effects you want as <b>Target</b> (the guide's Essential &amp; Ideal — the reroll logic treats them identically). <b>Passable</b> = keep only as a bonus, never aimed for.</p>
+      <div id="effGrid" class="eff-grid"></div>
+      <div class="row" style="margin-top:12px">
+        <label>Desired lines wanted <b>per piece</b> (Category):</label>
+        <select id="targetN"></select>
+        <span id="catLabel" class="muted"></span>
+      </div>
+    </details>
   </div>
 
   <!-- ================= RECOMMENDED PIECE ================= -->
@@ -111,7 +127,7 @@
   <div class="card">
     <h2>2 · Enter the gear piece</h2>
     <div class="tabs" id="pieceTabs"></div>
-    <p class="muted" style="margin-top:-4px;font-size:13px">Overload priority order for ATK builds: <b>Head → Arm → Body → Leg</b>. Set each line to what the game currently shows (effect + its Tier). Tick <b>Lock</b> for lines you've locked with a Custom Module.</p>
+    <p class="muted" style="margin-top:-4px;font-size:12.5px">ⓘ Set each line to what the game shows · tick <b>Lock</b> for locked lines · ATK-build overload order: Head → Arm → Body → Leg.</p>
     <div class="lines" id="lineEditors"></div>
     <div class="row" style="margin-top:10px">
       <button id="clearPiece">Clear this piece</button>
@@ -125,14 +141,15 @@
     <div id="advice"></div>
     <div class="progress"><i id="progBar" style="width:0%"></i></div>
     <div class="muted" id="progText" style="font-size:13px"></div>
-    <div id="lineStatus" style="margin-top:12px"></div>
   </div>
 
   <!-- ================= TOTALS ================= -->
   <div class="card">
-    <h2>4 · Unit totals — all four pieces combined</h2>
-    <p class="muted" style="margin-top:-6px;font-size:13px">Every rolled effect summed across Head / Arm / Body / Leg. Per the guide, a roll at or above its minimum counts as <b>1×</b>, below it as <b>0.5×</b> (Charge Damage / Crit / DEF always 1×). Use this for stacked requirements like "120% Max Ammo total".</p>
-    <div id="totals"></div>
+    <details id="totalsFold">
+      <summary class="reqsum"><h2 style="display:inline;margin:0">4 · Unit totals</h2> <span id="totalsDigest" class="muted" style="font-size:12.5px;margin-left:8px"></span></summary>
+      <p class="muted" style="margin-top:10px;font-size:13px">Every rolled effect summed across Head / Arm / Body / Leg. A roll at or above its minimum counts as <b>1×</b>, below it as <b>0.5×</b> (Charge Damage / Crit / DEF always 1×). Use this for stacked requirements like "120% Max Ammo total".</p>
+      <div id="totals"></div>
+    </details>
   </div>
 
   <!-- ================= REFERENCE ================= -->
@@ -217,11 +234,6 @@
       </div>
     </details>
     <p class="muted" style="font-size:12px;margin-bottom:0">Colour key (from the original charts): <span class="ftag blue">blue</span> least-risk path · <span class="ftag orange">orange</span> higher risk · <span class="ftag red">red</span> highest risk of being expensive.</p>
-  </div>
-
-  <div class="row" style="margin-bottom:12px">
-    <button id="resetAll" style="border-color:#5a1f1c;color:#ff8a80">🗑 Reset everything</button>
-    <span class="muted" style="font-size:12.5px">Clears your targets, category, and all four gear pieces — back to a fresh default.</span>
   </div>
 
   <p class="muted" style="font-size:12px">Logic based on Prydwen's <a href="https://www.prydwen.gg/nikke/guides/overload-gear-reroll" target="_blank">Overload Gear – Rerolling</a> &amp; <a href="https://www.prydwen.gg/nikke/guides/overload-gear-intro" target="_blank">Intro</a> guides. This is a decision aid; rerolling is RNG — your mileage will vary. Nothing is sent anywhere; your setup is saved in this browser only.</p>
@@ -495,9 +507,19 @@ function renderTabs(){
   });
 }
 
+const EFF_ABBR={'Elemental Damage':'Ele','ATK':'ATK','Max Ammo':'Ammo','Charge Speed':'Chg Spd','Hit Rate':'Hit','Charge Damage':'Chg Dmg','Critical Rate':'Crit','Critical Damage':'Crit Dmg','DEF':'DEF'};
+function renderTgtChips(){
+  const el=document.getElementById('tgtChips'); if(!el) return;
+  const tg=desiredSet(), ps=passableSet();
+  if(!tg.length&&!ps.length){ el.innerHTML='<span class="muted">none set yet</span>'; return; }
+  el.innerHTML=tg.map(e=>`<span class="badge b-good">${EFF_ABBR[e]||e}</span>`).join(' ')
+    +(ps.length?' '+ps.map(e=>`<span class="badge b-other" title="Passable bonus">${EFF_ABBR[e]||e} ~</span>`).join(' '):'')
+    +` <span class="badge b-other">Category ${state.N}</span>`;
+}
 function renderLineEditors(){
   const box=document.getElementById('lineEditors'); box.innerHTML='';
   const lines=state.pieces[state.active];
+  const aAct=analyze(state.active), passS=passableSet();   // for the inline status badges
   lines.forEach((l,i)=>{
     const row=h(`<div class="linerow"><span class="ln">Line ${i+1}</span></div>`);
     // effect select — a stat type can appear only once per gear, so grey out ones used on other lines
@@ -521,6 +543,22 @@ function renderLineEditors(){
     const lk=h(`<label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" ${l.locked?'checked':''}> Locked</label>`);
     lk.querySelector('input').onchange=e=>{l.locked=e.target.checked;save();renderAll();};
     row.appendChild(lk);
+    // inline status badges (replaces the old separate per-line status list)
+    {
+      const cl=aAct.lines[i];
+      let bg='';
+      if(cl.empty) bg='<span class="badge b-other">empty</span>';
+      else{
+        const isD=aAct.desired.includes(cl.effect), isP=passS.includes(cl.effect);
+        if(isD) bg+=cl.meets?'<span class="badge b-good">desired &middot; meets min</span>':'<span class="badge b-low">desired &middot; below min</span>';
+        else if(isP) bg+='<span class="badge b-other">passable bonus</span>';
+        else bg+='<span class="badge b-other">not wanted</span>';
+        if(cl.tier>=15) bg+=' <span class="badge b-black">Black T15</span>';
+        else if(cl.tier>=12) bg+=' <span class="badge b-blue">Blue T'+cl.tier+'</span>';
+      }
+      if(cl.locked) bg+=' <span class="badge b-lock">locked</span>';
+      row.appendChild(h('<span class="lbadges">'+bg+'</span>'));
+    }
     box.appendChild(row);
   });
 }
@@ -529,40 +567,22 @@ function renderAdvice(){
   const rec=recommend(state.active);
   const adv=document.getElementById('advice');
   adv.innerHTML='';
-  const step=h(`<div class="step ${rec.risk}"><h3>${rec.title}</h3><div>${rec.body||''}</div>${rec.cost?`<div style="margin-top:8px"><span class="pill">${rec.cost}</span><span class="pill">${riskLabel(rec.risk)}</span></div>`:''}</div>`);
+  // instruction stays on the card; explanatory warn/muted notes fold into "Why & alternatives"
+  const bodyTmp=h(`<div>${rec.body||''}</div>`);
+  const whyItems=[];
+  [...bodyTmp.querySelectorAll('span.warn,span.muted')].forEach(s=>{ whyItems.push(s.outerHTML); s.remove(); });
+  const cleanBody=bodyTmp.innerHTML.trim();
+  const step=h(`<div class="step ${rec.risk}"><h3>${rec.title}</h3>${cleanBody?`<div style="font-size:13.5px">${cleanBody}</div>`:''}${rec.cost?`<div style="margin-top:8px"><span class="pill">${rec.cost}</span><span class="pill">${riskLabel(rec.risk)}</span></div>`:''}</div>`);
   adv.appendChild(step);
+  if(whyItems.length)
+    adv.appendChild(h(`<details class="why"><summary>Why &amp; alternatives</summary><div class="wb">${whyItems.map(w=>`<div>${w}</div>`).join('')}</div></details>`));
   document.getElementById('progBar').style.width=(rec.progress||0)+'%';
   const a=rec.a;
   if(a) document.getElementById('progText').textContent=`Secured ${Math.min(a.distinctGood.size,a.N)} / ${a.N} desired effect${a.N>1?'s':''} on this piece.`;
   else document.getElementById('progText').textContent='';
-  renderLineStatus(rec);
   document.getElementById('pieceMeta').textContent = a?`${a.lockedCount} line(s) locked`:'';
 }
 function riskLabel(r){return {green:'Low risk / cheap',orange:'Medium risk',red:'Higher cost / risk',done:'Complete'}[r]||'';}
-
-function renderLineStatus(rec){
-  const box=document.getElementById('lineStatus'); box.innerHTML='';
-  const a=rec.a; if(!a) return;
-  const desired=a.desired, pass=passableSet();
-  const wrap=h(`<div></div>`);
-  a.lines.forEach(l=>{
-    let badges='';
-    if(l.empty) badges=`<span class="badge b-other">empty</span>`;
-    else{
-      const isD=desired.includes(l.effect);
-      const isP=pass.includes(l.effect);
-      if(isD) badges += l.meets?`<span class="badge b-good">desired &middot; meets min</span>`:`<span class="badge b-low">desired &middot; below min</span>`;
-      else if(isP) badges += `<span class="badge b-other">passable bonus</span>`;
-      else badges += `<span class="badge b-other">not wanted</span>`;
-      if(l.tier>=15) badges+=` <span class="badge b-black">Black T15</span>`;
-      else if(l.tier>=12) badges+=` <span class="badge b-blue">Blue T${l.tier}</span>`;
-    }
-    if(l.locked) badges+=` <span class="badge b-lock">locked</span>`;
-    const label=l.empty?'<i class="muted">empty</i>':`${l.effect} · ${l.val}% (T${l.tier})`;
-    wrap.appendChild(h(`<div style="padding:4px 0"><b>Line ${l.i+1}:</b> ${label} &nbsp; ${badges}</div>`));
-  });
-  box.appendChild(wrap);
-}
 
 function renderBanner(){
   const desired=desiredSet();
@@ -601,6 +621,11 @@ function renderTotals(){
       a.chips.push({p,i,tier:l.tier,v,locked:l.locked});
     });
   });
+  // one-line digest in the collapsed summary
+  const dig=document.getElementById('totalsDigest');
+  if(dig) dig.textContent=desired.length
+    ? desired.map(e=>{const g=agg[e]||{total:0};return `${EFF_ABBR[e]||e} ${parseFloat(g.total.toFixed(1))}%`;}).join(' · ')+' — click for the full table'
+    : 'nothing entered yet';
   // show marked effects (even at 0 rolls, so gaps are visible) plus anything rolled
   const rows=EFF_NAMES.filter(e=>desired.includes(e)||pass.includes(e)||agg[e]);
   if(!rows.length){ box.innerHTML='<span class="muted">Nothing entered yet — mark targets and fill in your pieces above.</span>'; return; }
@@ -616,6 +641,7 @@ function renderTotals(){
 
 function renderAll(){
   syncN();
+  renderTgtChips();
   renderTabs();
   renderLineEditors();
   renderAdvice();
@@ -642,16 +668,25 @@ function buildStatTable(){
 
 document.getElementById('targetN').onchange=e=>{state.N=+e.target.value;save();renderAll();};
 document.getElementById('clearPiece').onclick=()=>{state.pieces[state.active]=[0,1,2].map(()=>({effect:'',tier:11,locked:false}));save();renderAll();};
-document.getElementById('resetAll').onclick=()=>{
+// Called by the shell's top-bar Reset button (same-origin iframe); also usable standalone.
+window.resetEverything=function(){
   if(!confirm('Reset everything? This clears your targets, category, and all four gear pieces.')) return;
   localStorage.removeItem('nikkeOL');
   state=load();
+  renderEffGrid();   // rebuild the role dropdowns too, not just the derived views
   renderAll();
 };
 
 buildStatTable();
 renderEffGrid();
 renderAll();
+// targets panel: collapsed once configured, expanded for new users; manual toggles remembered
+(function(){
+  const rp=document.getElementById('reqPanel');
+  const saved=localStorage.getItem('nikkeOLreqOpen');
+  rp.open = saved===null ? desiredSet().length===0 : saved==='1';
+  rp.addEventListener('toggle',()=>localStorage.setItem('nikkeOLreqOpen',rp.open?'1':'0'));
+})();
 </script>
 </body>
 </html>
