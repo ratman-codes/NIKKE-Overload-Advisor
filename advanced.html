@@ -111,6 +111,9 @@
 </style>
 </head>
 <body>
+<script>/* inside the tab shell the top bar already names and describes this page — drop the duplicate header */
+if(window.self!==window.top)document.documentElement.classList.add('embedded');</script>
+<style>.embedded .wrap>h1,.embedded .wrap>.sub{display:none}.embedded .wrap{padding-top:14px}</style>
 <div class="wrap">
   <h1>NIKKE Overload Reroll Advisor <span style="color:var(--accent2);font-size:15px;vertical-align:middle">Whole-unit planner</span></h1>
   <p class="sub">Set unit-wide requirements (e.g. Elemental ×4 · ATK ×4 · Ammo ×2 = a "10/12" build) and follow one next move across all four pieces.</p>

@@ -94,6 +94,9 @@
 </style>
 </head>
 <body>
+<script>/* inside the tab shell the top bar already names and describes this page — drop the duplicate header */
+if(window.self!==window.top)document.documentElement.classList.add('embedded');</script>
+<style>.embedded .wrap>h1,.embedded .wrap>.sub{display:none}.embedded .wrap{padding-top:14px}</style>
 <div class="wrap">
   <h1>NIKKE Overload Reroll Advisor</h1>
   <p class="sub">Tells you the single best next move — Change Effects, Reset Attributes, or Lock — based on Prydwen's reroll logic. Set your target, enter what each gear piece shows, and follow the step.</p>
