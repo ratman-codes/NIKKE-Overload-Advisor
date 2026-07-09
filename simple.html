@@ -239,7 +239,15 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
     <p class="muted" style="font-size:12px;margin-bottom:0">Colour key (from the original charts): <span class="ftag blue">blue</span> least-risk path · <span class="ftag orange">orange</span> higher risk · <span class="ftag red">red</span> highest risk of being expensive.</p>
   </div>
 
-  <p class="muted" style="font-size:12px">Logic based on Prydwen's <a href="https://www.prydwen.gg/nikke/guides/overload-gear-reroll" target="_blank">Overload Gear – Rerolling</a> &amp; <a href="https://www.prydwen.gg/nikke/guides/overload-gear-intro" target="_blank">Intro</a> guides. This is a decision aid; rerolling is RNG — your mileage will vary. Nothing is sent anywhere; your setup is saved in this browser only.</p>
+  <p class="muted" style="font-size:12px">This is a decision aid; rerolling is RNG — your mileage will vary. Your setup is saved in this browser only.</p>
+  <div id="hitWrap" style="margin-top:10px"><img id="hitBadge" alt="hits" style="height:20px"></div>
+  <script>
+    // The whole-unit page carries the counter when both pages load inside the
+    // tab shell (else every visit would count twice); standalone opens of this
+    // page count themselves.
+    if(window.self===window.top) document.getElementById('hitBadge').src='https://hitcount.dev/p/ratman-codes/nikke-overload-advisor.svg';
+    else document.getElementById('hitWrap').style.display='none';
+  </script>
 </div>
 
 <script>
