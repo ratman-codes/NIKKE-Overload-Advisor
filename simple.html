@@ -96,8 +96,11 @@
 <body>
 <script>/* inside the tab shell the top bar already names and describes this page — drop the duplicate header */
 if(window.self!==window.top)document.documentElement.classList.add('embedded');</script>
-<style>.embedded .wrap>h1,.embedded .wrap>.sub{display:none}.embedded .wrap{padding-top:14px}</style>
+<style>.embedded .wrap>h1,.embedded .wrap>.sub{display:none}.embedded .wrap{padding-top:14px}
+.patchwarn{border:2px solid var(--red);background:var(--redbg);color:#ffb4ad;border-radius:10px;padding:12px 16px;font-size:15px;line-height:1.45;margin-bottom:16px}
+.patchwarn b{color:#ff8a80}</style>
 <div class="wrap">
+  <div class="patchwarn">🚧 <b>NOT YET UPDATED FOR THE LATEST GAME PATCH.</b> A recent NIKKE update changed the overload reroll (rock) logic. This tool still runs the <b>old rules</b>, so its advice and cost estimates may be wrong until it's updated — <b>update to come</b>.</div>
   <h1>NIKKE Overload Reroll Advisor</h1>
   <p class="sub">Tells you the single best next move — Change Effects, Reset Attributes, or Lock — based on Prydwen's reroll logic. Set your target, enter what each gear piece shows, and follow the step.</p>
 
