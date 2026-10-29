@@ -893,6 +893,30 @@ function recommendCore(piece){
   const presentTypes=new Set(desiredLines.map(l=>l.effect));   // types present at any value
   const presentCount=presentTypes.size;
   const riskByLocks=lockedCount>=2?'red':(lockedCount===1?'orange':'green');
+  // a value worth protecting: at goal AND the goal is not "any value" (Crit, DEF, Charge Damage)
+  const hard=l=>l.meets && goalTier(l.effect)>1;
+
+  // ===== SOLVER-DERIVED RULES (exact optimal-policy audit, Oct 2026) =====
+  // A locked line that is not part of this piece's plan only raises the price of every roll.
+  const passS=passableSet();
+  const lockedJunk=lines.filter(l=>l.locked && !l.empty && !desired.includes(l.effect) && !(a.optional||[]).includes(l.effect) && !passS.includes(l.effect));
+  if(lockedJunk.length){
+    const x=lockedJunk[0];
+    return {risk:'green',
+      title:`🔓 Unlock Line ${x.i+1} ${x.effect} (free)`,
+      body:`${x.effect} is not wanted on this piece, and the lock makes every roll cost more. Unlocking is free; the modules already spent are not refunded.`,
+      cost:'Unlock: free', progress:prog(a), a};
+  }
+  // A locked Line 1 target: Line 1 always rolls something, so a lock there mostly buys a higher
+  // roll price. The solver unlocks it whenever it is below goal, and also at goal while the
+  // piece is still fishing for effects, unless the goal itself is Blue/Black.
+  const l1=lines[0];
+  if(N>1 && l1.locked && !l1.empty && desired.includes(l1.effect) && (!l1.meets || (goalTier(l1.effect)<12 && presentCount<N && (lockedCount===1 || lines[1].locked) && !desiredLines.some(l=>l.i>0 && hard(l) && !l.locked)))){
+    return {risk:'green',
+      title:`🔓 Unlock Line 1 ${l1.effect} (free)`,
+      body:`${l1.meets?`It is at target, but Line 1 always rolls, so the lock only raises the price of every roll while you fish for the other effects. Keep the better roll each time and it survives on its own.`:`It is below target. Line 1 always rolls, so there is nothing to protect yet; the lock only raises the price of every roll.`} Unlocking is free; the modules already spent are not refunded.`,
+      cost:'Unlock: free', progress:prog(a), a};
+  }
 
   // ===== CATEGORY 1 — get one target, raise it to min, never lock =====
   if(N===1){
@@ -931,38 +955,31 @@ function recommendCore(piece){
   // slots remain (closure budget). Once enough pieces have claimed the no-quota
   // finish, the rest are presumptive carriers — Cat-3 rules, whose entry diamond
   // ignores Line 1 entirely (never lock a lone Blue/Black L1 on a Cat-3 piece).
-  const cat2Open=!(a.cat2Blocked&&a.cat2Blocked.length);
-  let bbUnlocked=desiredLines.filter(l=>l.bb && !l.locked)
-    // a lone Line-1 rare roll is normally churned (Cat 3) — unless it already sits at a
-    // Blue/Black TARGET: re-finding that value costs ~22–264 resets, far more than the
-    // ~27-rock penalty of fishing Lines 2/3 with one lock in place
-    .filter(l=> l.i>0 || anyOn23 || (N===2 && cat2Open) || (l.meets && goalTier(l.effect)>=12))
+  // Solver audit (Oct 2026): "Blue/Black" only matters relative to the goal. A Blue line under a
+  // Black goal is just below goal, so only lines AT goal qualify. Line 1 always rolls, and
+  // Keep/Change keeps a good Line 1 for free while fishing, so a Line 1 at goal is locked on
+  // sight only for a Black goal; otherwise it waits for the value stage (every effect present).
+  // (The old simulated keep-vs-sacrifice comparison for a Line 1 rare is gone: the solver settles
+  //  it, and the comparison could flip on simulation noise and tell you to throw a Black away.)
+  // Solver's rule for a Line 1 at a Blue goal: lock it once a target also sits on Line 3, or with
+  // two targets wanted in total; otherwise keep fishing. (Black goal: always. Ordinary goals:
+  // only in the value stage.)
+  // For ordinary goals (under Tier 12) a Blue/Black roll is just "at goal": the effect-phase and
+  // value-stage rules below already decide those lines, so this rule only covers Blue/Black goals.
+  // In the value stage, below-target locks are freed first (cheaper lock price), so it waits.
+  // (a locked Line 3 counts as live when its own goal is cheap: it will be at goal soon; so does
+  //  any other target already locked at goal)
+  const targetOnL3live=desiredLines.some(l=>l.i===2 && (l.meets || !l.locked || goalTier(l.effect)<12));
+  const lockedAtGoalElsewhere=desiredLines.some(l=>l.i>0 && l.locked && l.meets);
+  const valueStageUnlockPending = presentCount>=N && desiredLines.some(l=>l.locked && !l.meets);
+  const bbUnlocked=valueStageUnlockPending?[]:desiredLines.filter(l=>l.bb && l.meets && !l.locked && goalTier(l.effect)>=12)
+    .filter(l=> l.i>0 || presentCount>=N || goalTier(l.effect)>=15 || N===2 || targetOnL3live || lockedAtGoalElsewhere)
     .sort((x,y)=> x.i-y.i);
-  // Cat-3 with a Blue/Black on L1 and a companion landed: both community sims
-  // (tsukino's and the JP simulator) price keeping the L1 rare high. Headline
-  // whichever route is cheaper; the other stays available as a note.
-  let bbKeepNote='';
-  if(N===3 && bbUnlocked.length && bbUnlocked[0].i===0 && anyOn23){
-    const x=bbUnlocked[0];
-    // Simulate BOTH routes with the same engine (comparing analytic vs analytic here
-    // is unsafe — the two routes have different shapes, so the biases don't cancel):
-    // keep = pay the L1 lock now, then finish; sacrifice = leave L1 unlocked and let
-    // the policy churn/refill it (Line 1 appears 100% of the time).
-    const clsKeep=lines.map(l=>l===x?Object.assign({},l,{locked:true}):l);
-    const evKeep=Math.round(lockCost(lockedCount)+pieceCostForTargets(null,desired,clsKeep));
-    const evSac=Math.round(pieceCostForTargets(null,desired,lines));
-    if(evSac+5<evKeep){
-      a.bbSacNote=` <span class="warn">The ${tierWord(x.tier)} ${x.effect} on Line 1 is left unlocked on purpose. Keeping it costs about ${evKeep} modules to finish this piece; letting it reroll and refilling ${x.effect} on Line 1 last costs about ${evSac}. If the ${tierWord(x.tier)} value is worth ${evKeep-evSac} modules to you, lock Line 1 first instead.</span>`;
-      bbUnlocked=bbUnlocked.filter(l=>l!==x);
-    }else{
-      bbKeepNote=` <span class="warn">Keeping this ${tierWord(x.tier)} costs about ${evKeep} modules to finish the piece; giving it up costs about ${evSac}. Keeping it is as good or better.</span>`;
-    }
-  }
   if(bbUnlocked.length){
     const x=bbUnlocked[0];
     return {risk:x.i===0?'red':riskByLocks,
       title:`🔒 Lock Line ${x.i+1}: ${tierWord(x.tier)} ${x.effect} (${x.val}%, Tier ${x.tier})`,
-      body:`A ${tierWord(x.tier)} line is too rare to risk. Lock it.${x.i===0?` Locking Line 1 is usually a bad idea, but a ${tierWord(x.tier)} roll is worth it.`:''}${x.i===0?bbKeepNote:''}`,
+      body:`A ${tierWord(x.tier)} line at your target is too rare to risk. Lock it.${x.i===0?` Locking Line 1 is usually a bad idea, but a ${tierWord(x.tier)} roll at target is worth it.`:''}`,
       cost:`Lock ≈ ${lockCost(lockedCount)} modules`, progress:prog(a), a};
   }
 
@@ -986,8 +1003,31 @@ function recommendCore(piece){
   //    (rarest slot); Line 2 once you hold N-1 targets. Values get rerolled all together
   //    once every effect is on the piece (unlocking is free), so raising a value before
   //    locking only spends rocks at a worse price.
-  const shouldLock=l=> l.i===2 || (l.i===1 && presentCount>=N-1);
-  const lockNow=(presentCount<N?desiredLines:[]).filter(l=>!l.locked && shouldLock(l)).sort(byLine3First);
+  //    Solver refinements: a Line 2 target at goal is locked on sight when its goal is hard to
+  //    re-roll (under 30% per reset); a below-goal Line 2 is locked at N-1 only when the other
+  //    target sits on Line 3 (or N=2), never when it sits on Line 1 (Line 1 always rolls, so the
+  //    pair is cheaper to keep by Keep/Change than by paying a higher roll price).
+  const targetOnL3=desiredLines.some(l=>l.i===2);
+  const shouldLock=l=> l.i===2 || (l.i===1 && (hard(l) ? (pAtLeast(goalTier(l.effect))<0.3 || presentCount>=N-1)
+                                                        : (presentCount>=N-1 && (targetOnL3 || N===2))));
+  const cand=(presentCount<N?desiredLines:[]).filter(l=>!l.locked && shouldLock(l));
+  const atGoalCand=cand.filter(l=>hard(l)).sort(byLine3First);
+  const belowCand=cand.filter(l=>!hard(l)).sort(byLine3First);
+  // With nothing locked and ordinary (non-Blue/Black) goals, the solver raises the value FIRST:
+  // a reset costs 1 module and Keep/Change protects every line, while locking a below-goal line
+  // now only moves the same value fishing to a higher roll price. Lock it the moment it hits.
+  const cheapGoals=desiredLines.every(l=>goalTier(l.effect)<12);
+  const resetCand=belowCand.filter(l=>!l.meets);   // goal-1 lines never need a value
+  if(!atGoalCand.length && resetCand.length && lockedCount===0 && cheapGoals){
+    const multi=resetCand.length>1;
+    const list=resetCand.map(l=>`Line ${l.i+1} ${l.effect} → ${goalVal(l.effect)}% (Tier ${goalTier(l.effect)}+)`).join(' · ');
+    return {risk:'green',
+      title:multi?`🎯 Reset Attributes until ${resetCand.slice().sort((x,y)=>x.i-y.i).map(l=>'Line '+(l.i+1)).join(' or ')} reaches its target, then lock that line`
+                 :`🎯 Reset Attributes until Line ${resetCand[0].i+1} ${resetCand[0].effect} reaches ${goalVal(resetCand[0].effect)}% (Tier ${goalTier(resetCand[0].effect)}+), then lock it`,
+      body:`${list}. Nothing is locked, so a reset costs 1 module and rerolls every line's value. Keep the roll when a target line reaches its value, then lock that line and go back to fishing for the missing effects. Locking it now instead would move the same value fishing to a higher roll price.`,
+      cost:`Reset ≈ ${rerollCost(lockedCount)} modules each`, progress:prog(a), a};
+  }
+  const lockNow=atGoalCand.concat(belowCand);
   if(lockNow.length){
     const x=lockNow[0];
     const why = x.i===2 ? `on Line 3, the rarest line (30% to appear)`
@@ -1012,7 +1052,15 @@ function recommendCore(piece){
       body:`This target is ${why}. Lock it now at any value${x.meets?'':'; values are rerolled together once every effect is on the piece'}. Then keep fishing.${routeNote}${a.bbSacNote||''}`,
       cost:`Lock ≈ ${lockCost(lockedCount)} modules`, progress:prog(a), a};
   }
-  // (no "raise before locking" step any more — see the VALUE STAGE below)
+  // Solver: a locked below-goal Line 2 with no target on Line 3 is a lock bought too early when
+  // three targets are wanted. Unlock it (free) and keep fishing at the lower roll price.
+  const l2=lines[1];
+  if(N>=3 && presentCount<N && l2.locked && !l2.empty && desired.includes(l2.effect) && !l2.meets && !desiredLines.some(l=>l.i===2)){
+    return {risk:'green',
+      title:`🔓 Unlock Line 2 ${l2.effect} (free)`,
+      body:`It is below target and nothing sits on Line 3 yet, so this lock only raises the price of every roll while you fish. Unlocking is free; the modules already spent are not refunded. Lock Line 2 again once a target has landed on Line 3.`,
+      cost:'Unlock: free', progress:prog(a), a};
+  }
   // 4) All should-lock targets are secured. Fish for a still-missing type, or polish the last values.
   if(presentCount < N){
     const onlyL1 = unlocked.length===1 && unlocked[0].i===0;
@@ -1022,10 +1070,7 @@ function recommendCore(piece){
     const freeTxt = lockedCount>0 ? unlocked.map(l=>'Line '+(l.i+1)).join(' / ') : 'Line 2 / 3';
     const where = onlyL1 ? 'Line 1 (the only free line; it always rolls, so this is quick)' : freeTxt;
     const bbL1=desiredLines.find(l=>l.i===0 && l.bb && !l.locked);
-    const carrierWhy=(bbL1 && a.cat2Blocked && a.cat2Blocked.length)
-      ? ` This piece is expected to carry ${a.cat2Blocked.join('/')}, so it needs three effects, and the three-effect chart never locks a lone ${tierWord(bbL1.tier)} Line 1.`
-      : '';
-    const bbNote=a.bbSacNote?a.bbSacNote:(bbL1?` <span class="warn">Your ${tierWord(bbL1.tier)} ${bbL1.effect} on Line 1 will reroll too. To keep it while fishing, temp-lock Line 1.${carrierWhy}</span>`:'');
+    const bbNote=bbL1?` <span class="warn">Your ${tierWord(bbL1.tier)} ${bbL1.effect} on Line 1 rerolls too, but you only keep a roll that improves the piece, so it usually survives. A permanent lock there is not worth its price until every effect is on the piece. To hold it anyway while fishing, temp-lock Line 1.</span>`:'';
     // Fish for types that are ABSENT — a present-but-below-min target is a different
     // situation (it churns while fishing, and gets value-reset at the end if it sticks),
     // so listing it as something to "get" reads as a contradiction.
@@ -1042,14 +1087,9 @@ function recommendCore(piece){
   //    reset rolls every unlocked line at once — locking each line the moment it hits.
   const below=desiredLines.filter(l=>!l.meets);
   if(below.length){
-    const protectL=desiredLines.filter(l=>l.meets && !l.locked).sort(byLine3First);
-    if(protectL.length){
-      const x=protectL[0];
-      return {risk:riskByLocks,
-        title:`🔒 Lock Line ${x.i+1}: ${x.effect} is at target (${x.val}%)`,
-        body:`Lock it so the value rerolls for ${below.map(l=>'Line '+(l.i+1)).join(' / ')} cannot change it.`,
-        cost:`Lock ≈ ${lockCost(lockedCount)} modules`, progress:prog(a), a};
-    }
+    // Solver order: unlock first, then protect. A lock placed with fewer locks already in
+    // place is cheaper, so freeing the below-target lines before locking the finished one
+    // saves a module.
     const belowLocked=below.filter(l=>l.locked);
     if(belowLocked.length){
       const names=belowLocked.map(l=>`Line ${l.i+1} ${l.effect}`).join(' and ');
@@ -1058,6 +1098,14 @@ function recommendCore(piece){
         title:`🔓 Unlock ${names} (free)`,
         body:`${belowLocked.length>1?'These lines are':'It is'} below target. Unlocking is free; the modules already spent are not refunded. With every below-target line unlocked, each reset rolls them all at once and costs ${rerollCost(after)} module${rerollCost(after)>1?'s':''} instead of ${rerollCost(lockedCount)}.`,
         cost:'Unlock: free', progress:prog(a), a};
+    }
+    const protectL=desiredLines.filter(l=>hard(l) && !l.locked).sort(byLine3First);
+    if(protectL.length){
+      const x=protectL[0];
+      return {risk:riskByLocks,
+        title:`🔒 Lock Line ${x.i+1}: ${x.effect} is at target (${x.val}%)`,
+        body:`Lock it so the value rerolls for ${below.map(l=>'Line '+(l.i+1)).join(' / ')} cannot change it.`,
+        cost:`Lock ≈ ${lockCost(lockedCount)} modules`, progress:prog(a), a};
     }
     const list=below.map(l=>`Line ${l.i+1} ${l.effect} → ${goalVal(l.effect)}% (Tier ${goalTier(l.effect)}+)`).join(' · ');
     const multi=below.length>1;
