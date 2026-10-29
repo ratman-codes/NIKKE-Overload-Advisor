@@ -29,6 +29,7 @@
     }
     PIECES.forEach(p=>state.pieces[p]=[0,1,2].map(()=>({effect:'',tier:11,locked:false})));
     state.active='Head'; save();
+    if(typeof Exact!=='undefined'){ Exact.ensure('Head'); await new Promise(r=>{ const t=()=>{ if(Exact.status('Head')!=='pending') r(); else setTimeout(t,20); }; t(); }); }
     window.__diff={name,data,i:0,rows:[],actA:[],actB:[],t0:Date.now()};
   };
   window.diffRun=function(budgetMs){

@@ -97,6 +97,10 @@ function solve(spec){
     }
     if(maxd<1e-3) break;
   }
-  return {V,idx3,L,nS,sweeps,cls:cls.map(c=>c.map(x=>({lo:x.tiers[0],hi:x.tiers[x.tiers.length-1]})))};
+  // Q-values per state and action (0 stop, 1-3 lock line, 4-6 unlock line, 7 change, 8 reset), so the
+  // page can rank moves and apply a tie rule; Infinity = not available in that state
+  const Q=new Float64Array(nS*9).fill(Infinity);
+  for(let s=0;s<nS;s++){ if(done[s]){ Q[s*9]=0; continue; } for(let a=1;a<=8;a++){ const v=q(s,a); Q[s*9+a]=v>=1e17?Infinity:v; } }
+  return {V,Q,idx3,L,nS,sweeps,cls:cls.map(c=>c.map(x=>({lo:x.tiers[0],hi:x.tiers[x.tiers.length-1]})))};
 }
-self.onmessage=ev=>{ const {id,spec}=ev.data; try{ const t0=Date.now(); const r=solve(spec); self.postMessage({id,ok:true,V:r.V,idx3:r.idx3,L:r.L,nS:r.nS,sweeps:r.sweeps,cls:r.cls,ms:Date.now()-t0},[r.V.buffer,r.idx3.buffer]); }catch(e){ self.postMessage({id,ok:false,error:String(e)}); } };
+self.onmessage=ev=>{ const {id,spec}=ev.data; try{ const t0=Date.now(); const r=solve(spec); self.postMessage({id,ok:true,V:r.V,Q:r.Q,idx3:r.idx3,L:r.L,nS:r.nS,sweeps:r.sweeps,cls:r.cls,ms:Date.now()-t0},[r.V.buffer,r.Q.buffer,r.idx3.buffer]); }catch(e){ self.postMessage({id,ok:false,error:String(e)}); } };

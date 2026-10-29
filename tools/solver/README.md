@@ -1,7 +1,12 @@
 # Solver tooling
 
-Everything used to audit and correct the advisor's rolling logic. The pages themselves
-(`advanced.html`, `simple.html`) carry hand-written rules; these tools prove or disprove them.
+Everything used to audit and correct the advisor's rolling logic. Since Oct 2026 the pages
+run the solver themselves (`solver_worker.js`, embedded as a Web Worker): it picks the move for
+the piece in front of you and judges each roll in the roll guide. The hand-written rules
+remain as the wording layer and as the fallback for target sets the solver cannot model
+(fewer lines wanted than targets). A rule's move is kept when it is within 0.25 modules of the
+solver's best move, so the advice stays stable and well-worded; otherwise the solver's move is
+shown, built from the same templates, and the card carries a "✓ exact" pill either way.
 
 | File | What it is |
 |---|---|

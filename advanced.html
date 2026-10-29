@@ -937,7 +937,12 @@ function totalRemainingEV(){
   let tot=0, var2=0, keys=0;
   PIECES.forEach(p=>{
     const s=pieceCostStatForTargets(p,sets[p],cls[p]);
-    if(isFinite(s.ev)){ tot+=s.ev; var2+=s.sd*s.sd; keys+=s.keys||0; }
+    // exact modules for a piece whose target set is settled (no extra quota assigned here);
+    // the simulator still supplies the spread and the keys
+    const settled=sets[p].length===plan.sets[p].must.length;
+    const ex=(settled&&typeof Exact!=='undefined')?Exact.value(p,state.pieces[p]):null;
+    if(ex!==null){ tot+=ex; var2+=s.sd*s.sd; keys+=s.keys||0; }
+    else if(isFinite(s.ev)){ tot+=s.ev; var2+=s.sd*s.sd; keys+=s.keys||0; }
   });
   return {ev:Math.round(tot),sd:Math.round(Math.sqrt(var2)),keys:Math.round(keys)};
 }
@@ -993,7 +998,7 @@ function securedCount(piece){
   const a=analyze(piece), held=heldSet(piece);
   return Math.min(a.N, new Set(a.goodLines.filter(l=>held.has(l.i)).map(l=>keyOf(l.effect))).size);
 }
-function recommendCore(piece){
+function recommendRules(piece){
   const a=analyze(piece);
   const {desired,N,lines,desiredLines,goodLines,distinctGood,lockedCount,missing}=a;
 
@@ -1625,14 +1630,18 @@ function solve(spec){
     }
     if(maxd<1e-3) break;
   }
-  return {V,idx3,L,nS,sweeps,cls:cls.map(c=>c.map(x=>({lo:x.tiers[0],hi:x.tiers[x.tiers.length-1]})))};
+  // Q-values per state and action (0 stop, 1-3 lock line, 4-6 unlock line, 7 change, 8 reset), so the
+  // page can rank moves and apply a tie rule; Infinity = not available in that state
+  const Q=new Float64Array(nS*9).fill(Infinity);
+  for(let s=0;s<nS;s++){ if(done[s]){ Q[s*9]=0; continue; } for(let a=1;a<=8;a++){ const v=q(s,a); Q[s*9+a]=v>=1e17?Infinity:v; } }
+  return {V,Q,idx3,L,nS,sweeps,cls:cls.map(c=>c.map(x=>({lo:x.tiers[0],hi:x.tiers[x.tiers.length-1]})))};
 }
-self.onmessage=ev=>{ const {id,spec}=ev.data; try{ const t0=Date.now(); const r=solve(spec); self.postMessage({id,ok:true,V:r.V,idx3:r.idx3,L:r.L,nS:r.nS,sweeps:r.sweeps,cls:r.cls,ms:Date.now()-t0},[r.V.buffer,r.idx3.buffer]); }catch(e){ self.postMessage({id,ok:false,error:String(e)}); } };
+self.onmessage=ev=>{ const {id,spec}=ev.data; try{ const t0=Date.now(); const r=solve(spec); self.postMessage({id,ok:true,V:r.V,Q:r.Q,idx3:r.idx3,L:r.L,nS:r.nS,sweeps:r.sweeps,cls:r.cls,ms:Date.now()-t0},[r.V.buffer,r.Q.buffer,r.idx3.buffer]); }catch(e){ self.postMessage({id,ok:false,error:String(e)}); } };
 `;
 const Exact=(function(){
   let worker=null; const tables=new Map(); const pending=new Map(); const waiters=[];
   function getWorker(){ if(worker) return worker; try{ worker=new Worker(URL.createObjectURL(new Blob([SOLVER_SRC],{type:'text/javascript'}))); }catch(e){ return null; }
-    worker.onmessage=ev=>{ const r=ev.data; const p=pending.get(r.id); pending.delete(r.id); if(r.ok){ tables.set(r.id,{V:r.V,idx3:r.idx3,L:r.L,cls:r.cls,spec:p&&p.spec}); } waiters.splice(0).forEach(f=>{ try{ f(r.id); }catch(e){} }); };
+    worker.onmessage=ev=>{ const r=ev.data; const p=pending.get(r.id); pending.delete(r.id); if(r.ok){ tables.set(r.id,{V:r.V,Q:r.Q,idx3:r.idx3,L:r.L,cls:r.cls,spec:p&&p.spec}); } waiters.splice(0).forEach(f=>{ try{ f(r.id); }catch(e){} }); };
     return worker; }
   function specFor(piece){
     const a=analyze(piece); const d=a.desired; if(!d.length) return null;
@@ -1657,8 +1666,53 @@ const Exact=(function(){
   // 'ready' = exact table available; 'pending' = being computed (never show an estimate meanwhile);
   // 'none' = this target set is outside the model, the estimate rule answers and says so
   function status(piece){ const sp=specFor(piece); if(!sp) return 'none'; if(tables.has(sp.key)) return 'ready'; ensure(piece); return pending.has(sp.key)?'pending':'none'; }
-  return {value,ensure,onReady,status};
+  // Q per action for `lines` of `piece` (Infinity = not available) and the best action, or null
+  function qvalues(piece,lines){ const tbl=ensure(piece); if(!tbl||!tbl.Q) return null; const s=stateIndex(tbl,piece,lines); if(s<0) return null; const Q=Array.from(tbl.Q.subarray(s*9,s*9+9)); let best=-1; for(let a=0;a<9;a++) if(isFinite(Q[a])&&(best<0||Q[a]<Q[best])) best=a; if(best<0) return null; return {Q,best}; }
+  return {value,ensure,onReady,status,qvalues};
 })();
+
+/* ===== SOLVER-CHOSEN STEPS =====
+   The exact solver picks the move for the piece; the rules supply the wording. If the rules'
+   move is within TIE of the best move it is kept (stable, well-worded advice); otherwise the
+   solver's move is built from the same templates. Every step says whether it was checked
+   exactly. While a table is still being computed (first ~150 ms per target set) the rules
+   answer, marked "checking exactly". */
+const EXACT_TIE=0.25;   // modules: moves this close are the same move
+const ACT_NAMES=['stop','lock1','lock2','lock3','unlock1','unlock2','unlock3','change','reset'];
+function actionOf(rec){ const t=(rec&&rec.title||'').replace(/<[^>]+>/g,''); let m;
+  if((m=t.match(/^🔒 Lock Line (\d)/))) return +m[1];
+  if((m=t.match(/^🔓 Unlock Line (\d)/))) return 3+ +m[1];
+  if((m=t.match(/^⚠️ Line (\d) .* is locked below/))) return 3+ +m[1];
+  if(t.startsWith('🔁')) return 7; if(t.startsWith('🎯')) return 8; if(t.startsWith('✅')||t.startsWith('🎉')) return 0; return -1; }
+function recommendCore(piece){
+  const rules=recommendRules(piece);
+  const st=Exact.status(piece);
+  if(st==='none') return rules;                                   // outside the model: rules only
+  if(st==='pending') return Object.assign({},rules,{exact:'pending'});
+  const qs=Exact.qvalues(piece,state.pieces[piece]); if(!qs) return rules;
+  const best=qs.best, bestQ=qs.Q[best]; const ra=actionOf(rules);
+  if(ra>=0 && isFinite(qs.Q[ra]) && qs.Q[ra]<=bestQ+EXACT_TIE) return Object.assign({},rules,{exact:'ok',exactQ:qs.Q[ra],exactBest:bestQ});
+  if(ra===0 && best===0) return rules;
+  // build the solver's move from the rules' templates
+  const a=analyze(piece); const lines=a.lines; const lockedCount=a.lockedCount;
+  const names=ls=>ls.map(l=>'Line '+(l.i+1)); const risk=lockedCount>=2?'red':(lockedCount===1?'orange':'green');
+  const margin=(ra>=0&&isFinite(qs.Q[ra]))?(qs.Q[ra]-bestQ):null;
+  const why=`<span class="muted">Checked exactly: this move finishes the piece for about ${Math.round(bestQ)} modules${margin!==null?`, about ${margin<1?'1':Math.round(margin)} fewer than the usual rule's move`:''}.</span>`;
+  let rec;
+  if(best>=1&&best<=3){ const l=lines[best-1]; rec={risk,title:`🔒 Lock Line ${best}: ${l.effect} (${l.val}%, Tier ${l.tier})`,body:`Lock it now, then follow the next step.${why}`,cost:`Lock ≈ ${mods(lockCost(lockedCount))}`}; }
+  else if(best>=4&&best<=6){ const l=lines[best-4]; rec={risk:'green',title:`🔓 Unlock Line ${best-3} ${l.effect} (free)`,body:`Unlocking is free; spent modules are not refunded.${why}`,cost:'Unlock: free'}; }
+  else if(best===7){
+    const present=new Set(a.desiredLines.map(l=>keyOf(l.effect))); const absent=a.desired.filter(k=>!present.has(k));
+    const free=lines.filter(l=>!l.locked); const freeTxt=free.length===3?'Line 2 or 3':('Line '+free.map(l=>l.i+1).join(', ').replace(/, (\d)$/,' or $1'));
+    rec={risk,title:absent.length?`🔁 Change Effects until ${absent.map(dispKeyLong).join(' or ')} lands on ${freeTxt}`:`🔁 Change Effects (reroll the free lines)`,body:`Press <b>Change Effects</b>${absent.length?` until <b>${absent.map(dispKeyLong).join(' or ')}</b> lands on ${freeTxt}`:''}. Use the roll guide to decide Keep or Change.${why}`,cost:`Change ≈ ${mods(rerollCost(lockedCount))} each`};
+  }
+  else if(best===8){
+    const below=a.desiredLines.filter(l=>!l.locked&&!l.meets);
+    rec={risk,title:below.length>1?`🎯 Reset Attributes until Line ${below.map(l=>l.i+1).join(', ').replace(/, (\d)$/,' or $1')} reaches its target, then lock that line`:(below.length?`🎯 Reset Attributes until Line ${below[0].i+1} ${below[0].effect} reaches ${goalVal(below[0].effect)}% (Tier ${goalTier(below[0].effect)}+)`:'🎯 Reset Attributes'),body:`${below.map(l=>`Line ${l.i+1} ${l.effect} → ${goalVal(l.effect)}% (Tier ${goalTier(l.effect)}+)`).join(' · ')}.${below.length>1?' Lock each line as it hits.':''}${why}`,cost:`Reset ≈ ${mods(rerollCost(lockedCount))} each`};
+  }
+  else rec=rules;
+  return Object.assign({progress:prog(a),a},rec,{exact:'ok',exactQ:bestQ,exactBest:bestQ,fromSolver:true});
+}
 
 /* ===== ROLL GUIDE: after a roll, enter what the game showed and get Keep / Change =====
    The verdict uses the same keep rule the cost estimates assume: for Change Effects, more
@@ -1815,7 +1869,9 @@ function renderAdvice(){
     const est=pieceCostEstimate(target);
     if(est!==null && isFinite(est) && est>0){
       const stat=rec.a?pieceCostStatForTargets(target,rec.a.desired,rec.a.lines):null;
-      evPill=`<span class="pill" title="Expected modules to finish this piece">~${est}${stat?` ±${Math.round(stat.sd)}`:''} modules to finish ${target}</span>`;
+      const exactV=Exact.value(target,state.pieces[target]);   // exact expected modules when the solver has this piece's targets
+      evPill=exactV!==null?`<span class="pill" title="Exact expected modules to finish this piece (keys, if any, are estimated)">~${Math.round(exactV)} modules to finish ${target} · exact</span>`
+                          :`<span class="pill" title="Expected modules to finish this piece">~${est}${stat?` ±${Math.round(stat.sd)}`:''} modules to finish ${target}</span>`;
       let carryTxt='';
       const aT=rec.a;
       if(aT && aT.optional && aT.optional.length && !aT.overflow){
@@ -1823,7 +1879,7 @@ function renderAdvice(){
         const marg=Math.round(withOpt-est);
         if(isFinite(marg) && marg>0) carryTxt=` Add about ${marg} more if it ends up carrying ${aT.optional.map(dispKey).join('/')}.`;
       }
-      whyItems.push(`<span>Finishing ${target}: about ${est} modules.${carryTxt} Simulated average; luck swings hard.</span>`);
+      whyItems.push(exactV!==null?`<span>Finishing ${target}: about ${Math.round(exactV)} modules under exact play.${carryTxt} Luck swings hard.</span>`:`<span>Finishing ${target}: about ${est} modules.${carryTxt} Simulated average; luck swings hard.</span>`);
     }
   }
 
@@ -1861,7 +1917,7 @@ function renderAdvice(){
     else if(got.length) securedLine=`<div class="secured">Secured on ${target}: ${got.join(' · ')}</div>`;
   }
   const tag=allMet?'':`<span class="ptag">${target}${a?` · ${securedCount(target)} / ${a.N} secured`:''}</span>`;
-  const pillsHtml=(rec.cost||evPill)?`<div style="margin-top:8px">${rec.cost?`<span class="pill">${rec.cost}</span><span class="pill">${riskLabel(rec.risk)}</span>`:''}${evPill}</div>`:'';
+  const pillsHtml=(rec.cost||evPill)?`<div style="margin-top:8px">${rec.cost?`<span class="pill">${rec.cost}</span><span class="pill">${riskLabel(rec.risk)}</span>`:''}${rec.exact==='ok'?'<span class="pill" title="Checked against the exact solver">✓ exact</span>':(rec.exact==='pending'?'<span class="pill">checking exactly…</span>':'')}${evPill}</div>`:'';
   if(typeof wrongPiece!=='undefined' && wrongPiece){
     // the move is for another piece: the card is the gate. Loud switch first, the instruction
     // dimmed underneath so it can be read ahead but not mistaken for a move on this piece.
@@ -1958,6 +2014,7 @@ function renderTotals(){
   box.innerHTML=html+'</table></div>';
 }
 
+Exact.onReady(()=>{ try{ renderAll(); }catch(e){} });
 function renderAll(){
   renderBuildSummary();
   renderGoalUI();
