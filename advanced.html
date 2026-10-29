@@ -226,10 +226,10 @@
   .gcol.new{border-color:var(--accent)}
   .gcol .hd{font-size:12px;font-weight:800;letter-spacing:.5px;color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between}
   .gcol.new .hd{color:var(--accent)}
-  .gl{display:grid;grid-template-columns:22px 1fr;gap:6px;align-items:center;background:#12161c;border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin-bottom:6px;min-height:58px}
+  .gl{display:grid;grid-template-columns:22px 1fr;gap:6px;align-items:center;background:#12161c;border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin-bottom:6px;min-height:71px}
   .gl .ico{font-size:14px;text-align:center;color:var(--muted)}
-  .gl .eff{font-weight:600;font-size:13.5px}
-  .gl .val{font-size:12.5px;color:var(--muted)}
+  .gl .gname{font-weight:600;font-size:13.5px;line-height:1.3}
+  .gl .gval{font-size:12.5px;color:var(--muted)}
   .gl.locked{background:#172a1a;border-color:#2f7a44}
   .gl.locked .ico{color:#5fd67a}
   .gl select{width:100%;font-size:13px;padding:3px 4px;margin-top:2px}
@@ -1563,7 +1563,7 @@ function openRollGuide(piece,kind,rec){
   }
   const tcls=t=>t>=15?'tk':(t>=12?'tb':'');
   const valTxt=l=>l.effect?`T${l.tier} · ${EFFECTS[l.effect].vals[l.tier-1]}%`:'—';
-  const staticLine=(l,i,lock)=>`<div class="gl${lock?' locked':''}"><span class="ico">${lock?'🔒':(i+1)}</span><div><div class="eff">${l.effect||'(empty)'}</div><div class="val ${tcls(l.tier)}">${valTxt(l)}</div></div></div>`;
+  const staticLine=(l,i,lock)=>`<div class="gl${lock?' locked':''}"><span class="ico">${lock?'🔒':(i+1)}</span><div><div class="gname">${l.effect||'(empty)'}</div><div class="gval ${tcls(l.tier)}">${valTxt(l)}</div></div></div>`;
   let veil=document.getElementById('guideVeil');
   if(!veil){ veil=h('<div class="veil" id="guideVeil"><div class="gmodal"><button class="gclose">✕</button><h3 id="gTitle"></h3><div class="gsub" id="gSub"></div><div class="gcols"><div class="gcol"><div class="hd"><span>CURRENT</span><span>Keep</span></div><div id="gCur"></div></div><div class="gcol new"><div class="hd"><span>NEW ROLL</span><span>Change</span></div><div id="gNew"></div></div></div><div class="gverdict" id="gVerdict"></div><div class="gacts"><button class="gkeep" id="gKeep">Keep</button><button class="gchange" id="gChange">Change</button></div></div></div>'); document.body.appendChild(veil); veil.addEventListener('click',ev=>{ if(ev.target===veil) veil.style.display='none'; }); veil.querySelector('.gclose').onclick=()=>veil.style.display='none'; }
   veil.style.display='flex';
@@ -1582,7 +1582,7 @@ function openRollGuide(piece,kind,rec){
         EFF_OPTS.forEach(e=>{ const o=document.createElement('option'); o.value=e; o.textContent=e||'(empty)'; if(e&&used.includes(e)) o.disabled=true; if(e===cand[i].effect) o.selected=true; es.appendChild(o); });
         es.onchange=()=>{ cand[i].effect=es.value; if(!cand[i].effect) cand[i].tier=11; render(); };
         box.appendChild(es);
-      } else box.insertAdjacentHTML('beforeend',`<div class="eff">${cand[i].effect}</div>`);
+      } else box.insertAdjacentHTML('beforeend',`<div class="gname">${cand[i].effect}</div>`);
       const ts=document.createElement('select');
       if(!cand[i].effect){ ts.disabled=true; ts.innerHTML='<option>—</option>'; }
       else for(let t=1;t<=15;t++){ const o=document.createElement('option'); o.value=t; o.textContent=`T${t} · ${EFFECTS[cand[i].effect].vals[t-1]}%${t>=15?' Black':(t>=12?' Blue':'')}`; o.className=tierClass(t); if(t===cand[i].tier) o.selected=true; ts.appendChild(o); }
