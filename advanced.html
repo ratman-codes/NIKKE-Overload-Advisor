@@ -50,6 +50,10 @@
   table{border-collapse:collapse;width:100%;font-size:12.5px}
   th,td{border:1px solid var(--line);padding:4px 6px;text-align:center}
   th{background:var(--panel2);color:var(--muted);font-weight:600}
+  /* unit totals: the table hugs its content instead of stretching to the card */
+  table.tot{width:auto;max-width:100%}
+  table.tot th,table.tot td{padding:5px 12px;white-space:nowrap}
+  table.tot td:last-child{white-space:normal}
   .tier-blue{color:var(--blue)}
   .tier-black{color:var(--black);font-weight:700}
   .badge{display:inline-block;padding:1px 8px;border-radius:20px;font-size:11.5px;font-weight:600;border:1px solid transparent}
@@ -358,7 +362,7 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
 
   <!-- ================= REFERENCE ================= -->
   <div class="card">
-    <h2>Reference</h2>
+    <details id="refFold"><summary class="reqsum"><h2 style="display:inline;margin:0">Reference</h2></summary>
     <details>
       <summary>Substat value table (Blue = T12–14 · Black = T15)</summary>
       <div style="overflow-x:auto"><table id="statTable"></table></div>
@@ -415,12 +419,13 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
         <li>Both plans fish Line 1 last, which is why they cost about the same. The expensive mistake is leaving Line 3 for last.</li>
       </ul>
     </details>
+    </details>
   </div>
 
   <!-- ================= SOURCE / FLOWCHARTS ================= -->
   <div class="card">
-    <h2>Source flowcharts &amp; guide</h2>
-    <p class="muted" style="margin-top:-6px">Based on Prydwen's reroll flowcharts:</p>
+    <details id="srcFold"><summary class="reqsum"><h2 style="display:inline;margin:0">Source flowcharts &amp; guide</h2></summary>
+    <p class="muted" style="margin-top:10px">Based on Prydwen's reroll flowcharts:</p>
     <div class="row" style="margin-bottom:10px">
       <a class="guidebtn" href="https://www.prydwen.gg/nikke/guides/overload-gear-reroll" target="_blank" rel="noopener">📖 Prydwen: Overload Gear Rerolling ↗</a>
       <a class="guidebtn alt" href="https://www.prydwen.gg/nikke/guides/overload-gear-intro" target="_blank" rel="noopener">Intro guide ↗</a>
@@ -473,9 +478,9 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
       </div>
     </details>
     <p class="muted" style="font-size:12px;margin-bottom:0">Colour key (from the original charts): <span class="ftag blue">blue</span> least-risk path · <span class="ftag orange">orange</span> higher risk · <span class="ftag red">red</span> highest risk of being expensive.</p>
+    </details>
   </div>
 
-  <p class="muted" style="font-size:12px">Rerolling is random; results vary. Your setup is saved in this browser only. The badge below is an anonymous view counter.</p>
   <div style="margin-top:10px"><img id="hitBadge" alt="hits" style="height:20px"></div>
   <script>
     // One count per visit: the tab shell always loads BOTH pages, so only this
@@ -2040,14 +2045,14 @@ function renderTotals(){
   // show required effects (even at 0 rolls, so gaps are visible) plus anything rolled
   const rows=EFF_NAMES.filter(e=>reqd.includes(keyOf(e))||pass.includes(e)||agg[e]);
   if(!rows.length){ box.innerHTML='<span class="muted">Nothing entered yet. Set requirements and fill in your pieces.</span>'; return; }
-  let html='<div style="overflow-x:auto"><table style="max-width:900px"><tr><th style="text-align:left">Effect</th><th>Needed</th><th>Still to find</th><th>Rolls</th><th>Total %</th><th>Counts as</th><th style="text-align:left">Where</th></tr>';
+  let html='<div style="overflow-x:auto"><table class="tot"><tr><th style="text-align:left">Effect</th><th>To find</th><th>Total %</th><th>Counts as</th><th style="text-align:left">Where</th></tr>';
   rows.forEach(e=>{
     const a=agg[e]||{total:0,count:0,x:0,chips:[]};
     const k=keyOf(e), req=reqOf(k);
     const role=req>0?` <span class="badge b-good">×${req}${isGroup(k)?' · any of '+dispKey(k):''}</span>`:(pass.includes(e)?' <span class="badge b-other">Passable</span>':'');
     const rem=req>0?(ua.remaining[k]?`<span class="warn">${ua.remaining[k]}</span>`:'<span style="color:#5fd67a">✓ done</span>'):'—';
     const chips=a.chips.map(c=>`<span class="badge ${c.tier>=15?'b-black':(c.tier>=12?'b-blue':'b-other')}" title="Line ${c.i+1}">${c.p} T${c.tier} · ${c.v}%${c.locked?' 🔒':''}</span>`).join(' ');
-    html+=`<tr><td style="text-align:left">${e}${role}</td><td>${req>0?'×'+req:'—'}</td><td>${rem}</td><td>${a.count}</td><td><b>${parseFloat(a.total.toFixed(2))}%</b></td><td>${a.x?a.x+'×':'—'}</td><td style="text-align:left">${chips||'<span class="muted">none</span>'}</td></tr>`;
+    html+=`<tr><td style="text-align:left">${e}${role}</td><td>${rem}</td><td><b>${parseFloat(a.total.toFixed(2))}%</b></td><td>${a.x?a.x+'×':'—'}</td><td style="text-align:left">${chips||'<span class="muted">none</span>'}</td></tr>`;
   });
   box.innerHTML=html+'</table></div>';
 }
