@@ -91,6 +91,10 @@
   .reqtbl td{border:none;border-top:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:middle}
   .reqtbl tr:first-child td{border-top:none}
   .reqtbl .name{font-weight:600;white-space:nowrap}
+  /* min-value column: label with room, every dropdown the same width and text size */
+  .reqtbl .mincell{white-space:nowrap;text-align:right}
+  .reqtbl .mincell .muted{font-size:12.5px;margin-right:10px}
+  .reqtbl .mincell select{width:240px;font-size:13px;padding:5px 8px;vertical-align:middle}
   .reqtbl .passrow td{color:var(--muted)}
   /* phones: each target row becomes two lines (name · ✕ / min value) so the table never scrolls sideways */
   @media (max-width:680px){
@@ -101,7 +105,8 @@
     .reqtbl td:nth-child(1){grid-column:1;grid-row:1}
     .reqtbl td:nth-child(3){grid-column:2;grid-row:1}
     .reqtbl td:nth-child(2){grid-column:1/3;grid-row:2;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
-    .reqtbl td select{flex:1;max-width:100%;min-width:0}
+    .reqtbl td select,.reqtbl .mincell select{flex:1;width:auto;max-width:100%;min-width:0}
+    .reqtbl .mincell{text-align:left}
     .reqtbl .name{white-space:normal}
   }
   .full{color:#e0a94a}
@@ -895,7 +900,7 @@ function h(html){const d=document.createElement('div');d.innerHTML=html.trim();r
 function tierSelectFor(k){
   const gsel=document.createElement('select'); gsel.title='Minimum acceptable value. Prydwen\'s minimum by default.';
   const base=minTier(k), mem=groupMembers(k);
-  for(let t=1;t<=15;t++){ const o=document.createElement('option'); o.value=t; o.textContent=`≥ T${t} · ${mem.map(m=>EFFECTS[m].vals[t-1]+'%').join(' / ')}${t===base?' (Prydwen min)':(t>=15?' Black':(t>=12?' Blue':''))}`; o.className=tierClass(t); if(t===goalTier(k)) o.selected=true; gsel.appendChild(o); }
+  for(let t=1;t<=15;t++){ const o=document.createElement('option'); o.value=t; o.textContent=`≥ T${t} · ${mem.map(m=>EFFECTS[m].vals[t-1]+'%').join(' / ')}${t===base?' · Prydwen min':(t>=15?' · Black':(t>=12?' · Blue':''))}`; o.className=tierClass(t); if(t===goalTier(k)) o.selected=true; gsel.appendChild(o); }
   gsel.onchange=()=>{ if(!state.goalTierBy) state.goalTierBy={}; const t=+gsel.value; if(t===minTier(k)) delete state.goalTierBy[k]; else state.goalTierBy[k]=t; save(); renderAll(); };
   return gsel;
 }
@@ -908,7 +913,7 @@ function renderEffGrid(){
   // one row per target (an effect or an "any of" group): name · min value · remove
   tg.forEach(k=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td class="name"><i class="sw" style="background:${colorOf(k)}"></i>${dispKeyLong(k)}${isGroup(k)?'<span class="grp">ANY ONE</span>':''}</td><td><span class="muted" style="font-size:12px">min</span> </td><td style="width:30px"></td>`;
+    tr.innerHTML=`<td class="name"><i class="sw" style="background:${colorOf(k)}"></i>${dispKeyLong(k)}${isGroup(k)?'<span class="grp">ANY ONE</span>':''}</td><td class="mincell"><span class="muted">Min value</span></td><td style="width:30px"></td>`;
     tr.children[1].appendChild(tierSelectFor(k));
     const rm=h('<button class="rm" title="remove this target">✕</button>'); rm.onclick=()=>{ delete state.roles[k]; if(state.goalTierBy) delete state.goalTierBy[k]; commit(); };
     tr.children[2].appendChild(rm); rows.appendChild(tr);

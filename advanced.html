@@ -153,6 +153,10 @@
   .reqtbl .sharecell .share{width:80px;min-width:0;flex:none}
   .reqtbl tr:first-child td{border-top:none}
   .reqtbl .name{font-weight:600;white-space:nowrap}
+  /* min-value column: label with room, every dropdown the same width and text size */
+  .reqtbl .mincell{white-space:nowrap;text-align:right}
+  .reqtbl .mincell .muted{font-size:12.5px;margin-right:10px}
+  .reqtbl .mincell select{width:240px;font-size:13px;padding:5px 8px;vertical-align:middle}
   .stepper{display:inline-flex;align-items:center;gap:6px}
   .stepper button{width:30px;height:30px;padding:0;font-size:16px;line-height:1}
   .stepper button:disabled{opacity:.35;cursor:not-allowed}
@@ -212,7 +216,8 @@
     .reqtbl td:nth-child(5){grid-column:3;grid-row:1}
     .reqtbl td:nth-child(3){grid-column:1;grid-row:2}
     .reqtbl td:nth-child(4){grid-column:2/4;grid-row:2;display:flex;align-items:center;gap:4px}
-    .reqtbl td select{width:100%;max-width:100%;min-width:0}
+    .reqtbl td select,.reqtbl .mincell select{width:100%;max-width:100%;min-width:0}
+    .reqtbl .mincell{text-align:left}
     .reqtbl .name{white-space:normal}
     .reqtbl .sharecell .share{width:56px}
     .reqtbl .passrow td:nth-child(3){grid-column:1/4;grid-row:2}
@@ -1305,7 +1310,7 @@ const BUDGET=12;   // 4 pieces × 3 lines — over-allocation is impossible by c
 function tierSelect(e){
   const gsel=document.createElement('select'); gsel.title='Minimum acceptable value. Prydwen\'s minimum by default.';
   const base=minTier(e), mem=groupMembers(e);
-  for(let t=1;t<=15;t++){ const o=document.createElement('option'); o.value=t; o.textContent=`≥ T${t} · ${mem.map(m=>EFFECTS[m].vals[t-1]+'%').join(' / ')}${t===base?' (Prydwen min)':(t>=15?' Black':(t>=12?' Blue':''))}`; o.className=tierClass(t); if(t===goalTier(e)) o.selected=true; gsel.appendChild(o); }
+  for(let t=1;t<=15;t++){ const o=document.createElement('option'); o.value=t; o.textContent=`≥ T${t} · ${mem.map(m=>EFFECTS[m].vals[t-1]+'%').join(' / ')}${t===base?' · Prydwen min':(t>=15?' · Black':(t>=12?' · Blue':''))}`; o.className=tierClass(t); if(t===goalTier(e)) o.selected=true; gsel.appendChild(o); }
   gsel.onchange=()=>{ if(!state.goalTierBy) state.goalTierBy={}; const t=+gsel.value; if(t===minTier(e)) delete state.goalTierBy[e]; else state.goalTierBy[e]=t; EV_CACHE.clear(); save(); renderAll(); };
   return gsel;
 }
@@ -1327,7 +1332,7 @@ function renderEffGrid(){
   effs.forEach(e=>{
     const n=reqOf(e), left=ua.remaining[e]||0;
     const tr=document.createElement('tr');   // (h() can't parse <tr> outside a table)
-    tr.innerHTML=`<td class="name"><i class="sw" style="background:${colorOf(e)}"></i>${dispKeyLong(e)}${isGroup(e)?'<span class="grp">ANY ONE</span>':''}</td><td></td><td><div class="sharecell"><div class="share"><i style="width:${n/4*100}%;background:${colorOf(e)}"></i></div><span class="muted" style="font-size:12px">${left?left+' to find':'<span style="color:#5fd67a">✓ done</span>'}</span></div></td><td><span class="muted" style="font-size:12px">min</span> </td><td style="width:30px"></td>`;
+    tr.innerHTML=`<td class="name"><i class="sw" style="background:${colorOf(e)}"></i>${dispKeyLong(e)}${isGroup(e)?'<span class="grp">ANY ONE</span>':''}</td><td></td><td><div class="sharecell"><div class="share"><i style="width:${n/4*100}%;background:${colorOf(e)}"></i></div><span class="muted" style="font-size:12px">${left?`${n-left} / ${n} secured`:`<span style="color:#5fd67a">${n} / ${n} secured ✓</span>`}</span></div></td><td class="mincell"><span class="muted">Min value</span></td><td style="width:30px"></td>`;
     const step=h(`<span class="stepper"><button title="one piece fewer">−</button><b>×${n}</b><button title="one piece more" ${(free<=0||n>=4)?'disabled':''}>+</button></span>`);
     const [minus,plus]=step.querySelectorAll('button');
     minus.onclick=()=>{ if(n-1<=0) delete state.req[e]; else state.req[e]=n-1; EV_CACHE.clear(); save(); renderEffGrid(); renderAll(); };
@@ -1458,7 +1463,7 @@ function renderBuildSummary(){
   const total=totalReqLines();
   const ua=unitAnalysis();
   const secured=Math.min(total,PIECES.reduce((s,p)=>s+securedCount(p),0));
-  const parts=effs.map(e=>`${dispKeyLong(e)} ×${reqOf(e)}${ua.remaining[e]?` <span class="warn">(${ua.remaining[e]} to find)</span>`:' <span style="color:#5fd67a">✓</span>'}`).join(' · ');
+  const parts=effs.map(e=>`${dispKeyLong(e)} ×${reqOf(e)}${ua.remaining[e]?` <span class="warn">(${reqOf(e)-ua.remaining[e]} / ${reqOf(e)} secured)</span>`:' <span style="color:#5fd67a">✓</span>'}`).join(' · ');
   let warn='';
   if(total>12) warn=`<div class="warn">⚠ ${total} lines required but a unit only has 12 (4 pieces × 3 lines) — reduce something.</div>`;
   else if(effs.filter(e=>reqOf(e)===4).length>3) warn=`<div class="warn">⚠ more than three ×4 effects can't fit — a piece holds max 3 lines.</div>`;
@@ -1471,7 +1476,7 @@ function renderBuildSummary(){
   el.innerHTML=`<b>Build: ${total} / 12 lines</b> &nbsp;·&nbsp; ${parts} &nbsp;<span class="muted">— secured ${secured} of ${total}</span>${evTxt}${benchTxt}${warn}`;
   // compact always-visible chips in the collapsed header
   if(chips){
-    const t=effs.map(e=>`<span class="badge ${ua.remaining[e]?'b-good':'b-lock'}" title="${dispKeyLong(e)}${ua.remaining[e]?' — '+ua.remaining[e]+' to find':' — done'}">${dispKey(e)} ×${reqOf(e)}${ua.remaining[e]?'':' ✓'}</span>`).join(' ');
+    const t=effs.map(e=>`<span class="badge ${ua.remaining[e]?'b-good':'b-lock'}" title="${dispKeyLong(e)}: ${reqOf(e)-(ua.remaining[e]||0)} / ${reqOf(e)} secured">${dispKey(e)} ×${reqOf(e)}${ua.remaining[e]?'':' ✓'}</span>`).join(' ');
     const p=pass.length?' '+pass.map(e=>`<span class="badge b-other" title="Passable bonus">${EFF_ABBR[e]||e} ~</span>`).join(' '):'';
     const evChip=evOk?` <span class="badge b-other" title="Expected modules remaining from the current state${bench?' / full build from scratch':''}">📉 ${Exact.busy()?'…':`~${evTot.ev} to go${bench?` / ~${bench.ev} full`:''}`}</span>`:'';
     const warnChip=warn?' <span class="badge b-low">⚠</span>':'';
@@ -1993,7 +1998,7 @@ function renderAdvice(){
   const aAct=analyze(state.active);
   let aim=' · needs: '+(aAct.desired.length?aAct.desired.map(dispKeyLong).join(', '):'nothing, all covered');
   if(aAct.optional && aAct.optional.length)
-    aim+=' · bonus if it lands: '+aAct.optional.map(e=>`${dispKeyLong(e)} (${aAct.ua.remaining[e]} to find)`).join(', ');
+    aim+=' · bonus if it lands: '+aAct.optional.map(e=>`${dispKeyLong(e)} (${aAct.ua.remaining[e]} more needed)`).join(', ');
   document.getElementById('pieceMeta').textContent=`${aAct.lockedCount} locked${aim}`;
   const actBox=document.getElementById('activeAdvice');
   if(actBox){
@@ -2045,12 +2050,12 @@ function renderTotals(){
   // show required effects (even at 0 rolls, so gaps are visible) plus anything rolled
   const rows=EFF_NAMES.filter(e=>reqd.includes(keyOf(e))||pass.includes(e)||agg[e]);
   if(!rows.length){ box.innerHTML='<span class="muted">Nothing entered yet. Set requirements and fill in your pieces.</span>'; return; }
-  let html='<div style="overflow-x:auto"><table class="tot"><tr><th style="text-align:left">Effect</th><th>To find</th><th>Total %</th><th>Counts as</th><th style="text-align:left">Where</th></tr>';
+  let html='<div style="overflow-x:auto"><table class="tot"><tr><th style="text-align:left">Effect</th><th>Secured</th><th>Total %</th><th>Counts as</th><th style="text-align:left">Where</th></tr>';
   rows.forEach(e=>{
     const a=agg[e]||{total:0,count:0,x:0,chips:[]};
     const k=keyOf(e), req=reqOf(k);
     const role=req>0?` <span class="badge b-good">×${req}${isGroup(k)?' · any of '+dispKey(k):''}</span>`:(pass.includes(e)?' <span class="badge b-other">Passable</span>':'');
-    const rem=req>0?(ua.remaining[k]?`<span class="warn">${ua.remaining[k]}</span>`:'<span style="color:#5fd67a">✓ done</span>'):'—';
+    const rem=req>0?(ua.remaining[k]?`<span class="warn">${req-ua.remaining[k]} / ${req}</span>`:`<span style="color:#5fd67a">${req} / ${req} ✓</span>`):'—';
     const chips=a.chips.map(c=>`<span class="badge ${c.tier>=15?'b-black':(c.tier>=12?'b-blue':'b-other')}" title="Line ${c.i+1}">${c.p} T${c.tier} · ${c.v}%${c.locked?' 🔒':''}</span>`).join(' ');
     html+=`<tr><td style="text-align:left">${e}${role}</td><td>${rem}</td><td><b>${parseFloat(a.total.toFixed(2))}%</b></td><td>${a.x?a.x+'×':'—'}</td><td style="text-align:left">${chips||'<span class="muted">none</span>'}</td></tr>`;
   });
@@ -2059,6 +2064,9 @@ function renderTotals(){
 
 Exact.onReady(()=>{ try{ renderAll(); }catch(e){} });
 function renderAll(){
+  // the requirement rows carry per-effect progress ("2 / 4 secured"), so they must follow every
+  // gear edit too; skipped only while an add picker is open, so a background re-render can't close it
+  if(!document.querySelector('.addbar .btn-quiet.on')) renderEffGrid();
   renderBuildSummary();
   renderGoalUI();
   renderTabs();
