@@ -99,6 +99,15 @@
   .ftag.green{background:var(--greenbg);color:#5fd67a;border-color:#204a2b}
   /* "wrong piece" notice: a quiet row with one clear button, same shape as the other panels */
   .switchbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:8px 10px 8px 14px;margin-bottom:10px;font-size:14px}
+  /* wrong-piece gate: the step card turns into the switch instruction, with the real step dimmed under it */
+  .gate{border-left:5px solid var(--orange);border-radius:8px;background:linear-gradient(90deg,var(--orangebg),var(--panel2) 60%);padding:12px 14px}
+  .gate .top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+  .gate .top b{font-size:17px}
+  .gate .warnico{font-size:20px}
+  .gate .big{font-size:15px;padding:9px 18px}
+  .gate .next{opacity:.45;filter:grayscale(.4);border-top:1px dashed var(--line);padding-top:10px}
+  .gate .next .tag{font-size:12px;color:var(--muted);margin-bottom:4px}
+  .gate .next h3{margin:0 0 4px;font-size:16px}
   .switchbar .txt{min-width:0}
   .ptag{display:inline-block;font-size:12px;font-weight:600;padding:1px 9px;border-radius:20px;border:1px solid var(--line);background:#12161c;color:var(--muted);vertical-align:middle;margin-left:6px}
   .step{padding:11px 14px}
@@ -199,8 +208,41 @@
   .why summary{color:var(--accent);font-weight:600;padding:4px 0}
   #advice:has(.why) + *, #advice{margin-bottom:0}
   .card:has(#advice){padding-bottom:10px}
+  #reqPanel{margin-bottom:0}
+  .card:has(#reqPanel){padding-bottom:8px}
   .why .wb{display:grid;gap:7px;margin-top:8px;color:var(--muted)}
   @media (max-width:680px){ .linerow{grid-template-columns:44px 1fr 1fr 70px} .lbadges{grid-column:1/-1;justify-content:flex-start} }
+  /* roll guide: heading-row button + popup laid out like the game's Keep / Change screen */
+  .guidebtn{border-radius:24px;padding:8px 16px;font-size:14.5px}
+  .guidebtn span{font-weight:500;opacity:.85}
+  .veil{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px;z-index:9}
+  .gmodal{position:relative;width:min(640px,100%);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+  .gmodal h3{margin:0 0 2px;font-size:17px}
+  .gmodal .gsub{font-size:13px;color:var(--muted);margin-bottom:12px}
+  .gclose{position:absolute;top:10px;right:12px;background:none;border:none;color:var(--muted);font-size:18px;padding:0 4px}
+  .gcols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:560px){ .gcols{grid-template-columns:1fr} }
+  .gcol{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px}
+  .gcol.new{border-color:var(--accent)}
+  .gcol .hd{font-size:12px;font-weight:800;letter-spacing:.5px;color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between}
+  .gcol.new .hd{color:var(--accent)}
+  .gl{display:grid;grid-template-columns:22px 1fr;gap:6px;align-items:center;background:#12161c;border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin-bottom:6px;min-height:58px}
+  .gl .ico{font-size:14px;text-align:center;color:var(--muted)}
+  .gl .eff{font-weight:600;font-size:13.5px}
+  .gl .val{font-size:12.5px;color:var(--muted)}
+  .gl.locked{background:#172a1a;border-color:#2f7a44}
+  .gl.locked .ico{color:#5fd67a}
+  .gl select{width:100%;font-size:13px;padding:3px 4px;margin-top:2px}
+  .gl .tb{color:var(--blue)} .gl .tk{color:var(--black);font-weight:700}
+  .gverdict{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:#12161c}
+  .gverdict.take{background:var(--greenbg);border-color:#2f7a44}
+  .gverdict b{font-size:19px} .gverdict.take b{color:#5fd67a}
+  .gverdict .why{font-size:13px;flex:1;min-width:200px}
+  .gacts{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
+  .gacts button{font-size:15px;padding:9px 20px;min-width:120px}
+  .gacts .gkeep{background:#2a323d}
+  .gacts .gchange{background:var(--green);border-color:var(--green);color:#fff;font-weight:700}
+  .gacts button[disabled]{opacity:.45;cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -211,7 +253,7 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
   <h1>NIKKE Overload Reroll Advisor <span style="color:var(--accent2);font-size:15px;vertical-align:middle">Whole-unit planner</span></h1>
   <p class="sub">Set what the whole unit needs (for example Elemental ×4, ATK ×4, Ammo ×2) and follow one next move across all four pieces.</p>
 
-  <div class="warnline">⚠️&nbsp;<span><b style="color:#e0a94a">Guide only. Use your own judgment.</b> Costs are simulated averages and luck swings hard. <details style="display:inline"><summary style="display:inline;cursor:pointer;color:var(--accent)">more</summary> <span class="muted">This tool is one reading of the community flowcharts and may have bugs or miss edge cases. Check anything expensive before spending modules. Estimates assume you always keep the better roll. Stop when your budget says stop.</span></details></span></div>
+  <div class="warnline">⚠️&nbsp;<span><b style="color:#e0a94a">Guide only. Use your own judgment.</b> Costs are simulated averages and luck swings hard. <details style="display:inline"><summary style="display:inline;cursor:pointer;color:var(--accent)">more</summary> <span class="muted">This tool is one reading of the community flowcharts and may have bugs or miss edge cases. Check anything expensive before spending modules. Estimates assume you follow the advice, including sitting on a low value while hunting Blue or Black. Stop when your budget says stop.</span></details></span></div>
 
   <!-- ================= TARGETS ================= -->
   <div class="card">
@@ -276,11 +318,13 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
         <label class="switch"><input type="checkbox" id="tempSwitch"><span class="track"></span><span>🔑 Temp locks available</span></label>
         <span class="hint" id="tempHint"></span>
       </div>
+      <button class="btn-primary guidebtn" id="guideBtn" style="display:none" title="After a roll, enter what the game shows and get a Keep or Change answer">🎲 Guide me roll by roll <span>· tells you Keep or Change</span></button>
     </div>
     <div id="costStrip" class="coststrip" style="display:none;margin:0 0 12px" title="Expected Custom Modules. Simulated averages; luck swings hard.">
       <span class="cs-item"><span class="muted">Modules left</span> <b class="cs-val" id="statLeft">—</b></span>
       <span class="cs-item"><span class="muted">Full build</span> <b class="cs-val" id="statFull">—</b></span>
       <span class="cs-item" style="flex:1;min-width:170px;display:flex;align-items:center;gap:8px"><span class="meter" style="flex:1;margin-top:0"><i id="costMeter" style="width:0%"></i></span><span class="muted" id="costPct" style="font-size:12px;white-space:nowrap"></span></span>
+          <span class="cs-item" id="sessCount" style="display:none;margin-left:auto"></span>
     </div>
     <div id="advice"></div>
   </div>
@@ -513,10 +557,10 @@ function seatNote(l,lockedCount){
   const g=goalTier(l.effect);
   if(g<11) return '';   // park-low only pays off for 1%-bin targets (Tier 11+); below that it's a ~1–2% edge
   const rolls=resetsFrom(l.effect,l.tier), rocks=Math.round(rolls*rerollCost(lockedCount));
-  const seat = l.tier<=5 ? `Line ${l.i+1} is at Phase 1 to 5, the best place to roll from.`
-             : l.tier<=10 ? `Line ${l.i+1} is at Phase 6 to 10, only about 6% worse than Phase 1 to 5. Keep it unless you are hunting Black with a deep stockpile.`
-             : `Line ${l.i+1} is at Tier ${l.tier}, the worst place to roll from. Take the next Phase 1 to 5 roll (about 2 rolls), then keep going.`;
-  return ` <span class="warn">Target ${goalLabel(l.effect)}. ${seat} Accept only Tier ${g}+; a Tier 6 to 11 value makes the next roll worse. If you stop early, take the best value offered. About ${Math.round(rolls)} resets from here (about ${rocks} modules at ${rerollCost(lockedCount)} per roll).</span>`;
+  const seat = l.tier<=5 ? `Line ${l.i+1} sits at Phase 1 to 5, the best seat to roll from.`
+             : l.tier<=10 ? `Line ${l.i+1} sits at Phase 6 to 10, about 6% worse than Phase 1 to 5; keep it unless you are hunting Black with a deep stock.`
+             : `Line ${l.i+1} sits at Tier ${l.tier}, the worst seat; take the next Phase 1 to 5 roll (about 2 rolls), then continue.`;
+  return ` <span class="warn">Line ${l.i+1} target ${goalLabel(l.effect)}. ${seat} Accept only Tier ${g}+. About ${Math.round(rolls)} resets, about ${rocks} modules.</span>`;
 }
 
 /* ============================ ANALYSIS ============================ */
@@ -894,6 +938,7 @@ function totalRemainingEV(){
 
 function rerollCost(locked){ return [1,2,3,4][Math.min(locked,3)]; }
 function lockCost(locked){ return [2,3,4,4][Math.min(locked,3)]; }
+const mods=n=>`${n} module${n===1?'':'s'}`;
 
 /* Core recommender — returns the single best next action */
 // TEMP-LOCK MODE: a PROVISIONAL hold (a target landed below its value, which gets freed again
@@ -926,6 +971,21 @@ function recommend(piece){
     title:`🔑 Temp-lock ${names} (${keys} keys this roll) + ${cur.title}`,
     body:`Temp-lock ${names}, then: ${cur.body||''}<span class="muted"> Reapply the temp lock each roll with "load previous lock settings".</span>`,
     cost:`${cur.cost?cur.cost+' · ':''}+ ${keys} keys per roll`});
+}
+// A line counts as SECURED (for display) only when it will survive: locked, temp-held by the
+// next step, or on a piece whose next step does not reroll it. An unlocked at-goal line that
+// the next Change Effects / Reset will roll is merely "at value".
+function heldSet(piece){
+  const plain=(recommend(piece).title||'').replace(/<[^>]+>/g,'');
+  const held=new Set(); state.pieces[piece].forEach((l,i)=>{ if(l.locked) held.add(i); });
+  [...plain.matchAll(/Temp-lock Line (\d)/g)].forEach(m=>held.add(+m[1]-1));
+  if(plain.includes('Temp-lock')) [...plain.matchAll(/\+ Line (\d)/g)].forEach(m=>held.add(+m[1]-1));
+  if(!/🔁|🎯/.test(plain)) for(let i=0;i<3;i++) held.add(i);
+  return held;
+}
+function securedCount(piece){
+  const a=analyze(piece), held=heldSet(piece);
+  return Math.min(a.N, new Set(a.goodLines.filter(l=>held.has(l.i)).map(l=>keyOf(l.effect))).size);
 }
 function recommendCore(piece){
   const a=analyze(piece);
@@ -996,7 +1056,7 @@ function recommendCore(piece){
       return {risk:'green',
         title:`🎯 Reset Attributes until Line ${low.i+1} ${low.effect} reaches ${mv}% (Tier ${mt}+)`,
         body:`Press <b>Reset Attributes</b> until it reaches Tier ${mt}+.<span class="muted"> No lock needed with one target.</span>${seatNote(low,lockedCount)}`,
-        cost:`Reset ≈ ${rerollCost(lockedCount)} modules each`, progress:prog(a), a};
+        cost:`Reset ≈ ${mods(rerollCost(lockedCount))} each`, progress:prog(a), a};
     }
     const stuck=desiredLines.find(l=>!l.meets && l.locked);
     if(stuck){
@@ -1009,7 +1069,7 @@ function recommendCore(piece){
     return {risk:'green',
       title:`🔁 Change Effects until ${desired.map(dispKeyLong).join(' or ')} lands on any line`,
       body:`Press <b>Change Effects</b> with nothing locked until it appears on any line.`,
-      cost:`Change ≈ ${rerollCost(lockedCount)} modules each`, progress:prog(a), a};
+      cost:`Change ≈ ${mods(rerollCost(lockedCount))} each`, progress:prog(a), a};
   }
 
   // ===== CATEGORY 2 & 3 — per-line branching, straight from the flowchart =====
@@ -1050,7 +1110,7 @@ function recommendCore(piece){
     return {risk:x.i===0?'red':riskByLocks,
       title:`🔒 Lock Line ${x.i+1}: ${tierWord(x.tier)} ${x.effect} (${x.val}%, Tier ${x.tier})`,
       body:`Too rare to risk.${x.i===0?`<span class="muted"> Locking Line 1 is usually a bad idea; a ${tierWord(x.tier)} at target is the exception.</span>`:''}`,
-      cost:`Lock ≈ ${lockCost(lockedCount)} modules`, progress:prog(a), a};
+      cost:`Lock ≈ ${mods(lockCost(lockedCount))}`, progress:prog(a), a};
   }
 
   // 1) Relocate — ONLY when a non-Blue/Black Line 1 target is the sole desired effect on the
@@ -1062,8 +1122,8 @@ function recommendCore(piece){
   if(misplacedL1 && !anyOn23){
     return {risk:riskByLocks,
       title:`🔁 Change Effects until a target lands on Line 2 or 3`,
-      body:`Keep everything unlocked and press <b>Change Effects</b> until ${desired.map(dispKeyLong).join(' / ')} lands on <b>Line 2 or 3</b>, then lock that line.<span class="muted"> Line 1 always rolls and is filled last. To keep this exact Line 1 roll, temp-lock Line 1.</span>`,
-      cost:`Change ≈ ${rerollCost(lockedCount)} modules each`, progress:prog(a), a};
+      body:`Keep everything unlocked and press <b>Change Effects</b> until ${desired.map(dispKeyLong).join(' or ')} lands on <b>Line 2 or 3</b>, then lock that line.<span class="muted"> Line 1 always rolls and is filled last. To keep this exact Line 1 roll, temp-lock Line 1.</span>`,
+      cost:`Change ≈ ${mods(rerollCost(lockedCount))} each`, progress:prog(a), a};
   }
 
   // (the chart's "raise both Line 2 & 3, then lock both" path is gone: values are now
@@ -1092,10 +1152,10 @@ function recommendCore(piece){
     const multi=resetCand.length>1;
     const list=resetCand.map(l=>`Line ${l.i+1} ${l.effect} → ${goalVal(l.effect)}% (Tier ${goalTier(l.effect)}+)`).join(' · ');
     return {risk:'green',
-      title:multi?`🎯 Reset Attributes until ${resetCand.slice().sort((x,y)=>x.i-y.i).map(l=>'Line '+(l.i+1)).join(' or ')} reaches its target, then lock that line`
+      title:multi?`🎯 Reset Attributes until Line ${resetCand.slice().sort((x,y)=>x.i-y.i).map(l=>l.i+1).join(', ').replace(/, (\d)$/,' or $1')} reaches its target, then lock that line`
                  :`🎯 Reset Attributes until Line ${resetCand[0].i+1} ${resetCand[0].effect} reaches ${goalVal(resetCand[0].effect)}% (Tier ${goalTier(resetCand[0].effect)}+), then lock it`,
       body:`${list}.<span class="muted"> Nothing is locked, so a reset costs 1 module. Locking now would move the same value fishing to a higher roll price.</span>`,
-      cost:`Reset ≈ ${rerollCost(lockedCount)} modules each`, progress:prog(a), a};
+      cost:`Reset ≈ ${mods(rerollCost(lockedCount))} each`, progress:prog(a), a};
   }
   const lockNow=atGoalCand.concat(belowCand);
   if(lockNow.length){
@@ -1120,7 +1180,7 @@ function recommendCore(piece){
     return {risk:riskByLocks,
       title:`🔒 Lock Line ${x.i+1}: ${x.effect} (${x.val}%, Tier ${x.tier})`,
       body:`Lock it now${x.meets?'':' at any value'}, then keep fishing.<span class="muted"> It is ${why}.${x.meets?'':' Values are rerolled together once every effect is on the piece.'}</span>${routeNote}${a.bbSacNote||''}`,
-      cost:`Lock ≈ ${lockCost(lockedCount)} modules`, progress:prog(a), a};
+      cost:`Lock ≈ ${mods(lockCost(lockedCount))}`, progress:prog(a), a};
   }
   // Solver: a locked below-goal Line 2 with no target on Line 3 is a lock bought too early when
   // three targets are wanted. Unlock it (free) and keep fishing at the lower roll price.
@@ -1137,8 +1197,10 @@ function recommendCore(piece){
     const haveSome = presentCount>0;
     // With locks in place, name the actual free lines (chart: "…on Line 1 or Line 2" once L3 is locked);
     // with nothing locked yet, the chart wants targets specifically on Line 2/3.
-    const freeTxt = lockedCount>0 ? unlocked.map(l=>'Line '+(l.i+1)).join(' / ') : 'Line 2 / 3';
-    const where = onlyL1 ? 'Line 1 (the only free line; it always rolls, so this is quick)' : freeTxt;
+    const lineList=ls=>ls.length>1?'Line '+ls.slice(0,-1).join(', ')+' or '+ls[ls.length-1]:'Line '+ls[0];
+    const freeTxt = lockedCount>0 ? lineList(unlocked.map(l=>l.i+1)) : 'Line 2 or 3';
+    const where = onlyL1 ? 'Line 1 (it always rolls, so this is quick)' : freeTxt;
+    const lastOne = presentCount===N-1;   // the effect that completes the set: no lock, values come next
     const bbL1=desiredLines.find(l=>l.i===0 && l.bb && !l.locked);
     const bbNote=bbL1?` <span class="warn">Your ${tierWord(bbL1.tier)} ${bbL1.effect} on Line 1 rerolls too, but you only keep a roll that improves the piece, so it usually survives. A permanent lock there is not worth its price until every effect is on the piece. To hold it anyway while fishing, temp-lock Line 1.</span>`:'';
     // Fish for types that are ABSENT — a present-but-below-min target is a different
@@ -1146,11 +1208,11 @@ function recommendCore(piece){
     // so listing it as something to "get" reads as a contradiction.
     const absent=desired.filter(e=>!presentTypes.has(e));
     const lowPresent=desiredLines.filter(l=>!l.meets && !l.locked && !l.bb);
-    const lowNote=lowPresent.length?` <span class="muted">${lowPresent.map(l=>`${l.effect} on Line ${l.i+1} (${l.val}%)`).join(' and ')} is below target and will keep rerolling during this. That is fine; values are rerolled at the end.${lowPresent.some(l=>l.i===0)?' A Line 1 below Blue is never locked; it only needs to survive to the end.':''}</span>`:'';
+    const lowNote=lowPresent.length?` <span class="muted">${lowPresent.map(l=>`${l.effect} on Line ${l.i+1} (${l.val}%)`).join(' and ')} is below target; it rerolls while you fish and gets its value at the end.</span>`:'';
     return {risk:riskByLocks,
-      title:`🔁 Change Effects until ${absent.map(dispKeyLong).join(' / ')} lands on ${onlyL1?'Line 1':freeTxt}`,
-      body:`Press <b>Change Effects</b> until <b>${absent.map(dispKeyLong).join(' or ')}</b> lands on ${where}, then lock it at any value.<span class="muted"> Keep the free lines unlocked. Values are rerolled together at the end.</span>${lowNote}${bbNote}`,
-      cost:`Change ≈ ${rerollCost(lockedCount)} modules each`, progress:prog(a), a};
+      title:`🔁 Change Effects until ${absent.map(dispKeyLong).join(' or ')} lands on ${onlyL1?'Line 1':freeTxt}`,
+      body:`Press <b>Change Effects</b> until <b>${absent.map(dispKeyLong).join(' or ')}</b> lands on ${where}${lastOne?'. Then the values get rerolled.':', then lock it at any value.'}<span class="muted"> Keep the free lines unlocked.${lastOne?'':' Values are rerolled together at the end.'}</span>${lowNote}${bbNote}`,
+      cost:`Change ≈ ${mods(rerollCost(lockedCount))} each`, progress:prog(a), a};
   }
   // 5) VALUE STAGE — every effect is on the piece. Protect lines already at target, unlock
   //    below-target locked lines (free), then reroll values with ALL of them in play — each
@@ -1174,16 +1236,16 @@ function recommendCore(piece){
       const x=protectL[0];
       return {risk:riskByLocks,
         title:`🔒 Lock Line ${x.i+1}: ${x.effect} is at target (${x.val}%)`,
-        body:`Lock it so the value rerolls for ${below.map(l=>'Line '+(l.i+1)).join(' / ')} cannot change it.`,
-        cost:`Lock ≈ ${lockCost(lockedCount)} modules`, progress:prog(a), a};
+        body:`Lock it so resetting ${below.map(l=>'Line '+(l.i+1)).join(' / ')} cannot change it.`,
+        cost:`Lock ≈ ${mods(lockCost(lockedCount))}`, progress:prog(a), a};
     }
     const list=below.map(l=>`Line ${l.i+1} ${l.effect} → ${goalVal(l.effect)}% (Tier ${goalTier(l.effect)}+)`).join(' · ');
     const multi=below.length>1;
     return {risk:riskByLocks,
-      title:multi?`🎯 Reset Attributes until ${below.map(l=>'Line '+(l.i+1)).join(' or ')} reaches its target, then lock that line`
+      title:multi?`🎯 Reset Attributes until Line ${below.map(l=>l.i+1).join(', ').replace(/, (\d)$/,' or $1')} reaches its target, then lock that line`
                  :`🎯 Reset Attributes until Line ${below[0].i+1} ${below[0].effect} reaches ${goalVal(below[0].effect)}% (Tier ${goalTier(below[0].effect)}+)`,
       body:`${list}.${multi?' Lock each line as it hits.':''}${below.map(l=>seatNote(l,lockedCount)).join('')}`,
-      cost:`Reset ≈ ${rerollCost(lockedCount)} modules each`, progress:prog(a), a};
+      cost:`Reset ≈ ${mods(rerollCost(lockedCount))} each`, progress:prog(a), a};
   }
   return {risk:'done',title:'✅ This piece meets your target',body:'Nothing left to do on this piece.',progress:100,a};
 }
@@ -1353,7 +1415,7 @@ function renderBuildSummary(){
   }
   const total=totalReqLines();
   const ua=unitAnalysis();
-  const secured=effs.reduce((s,e)=>s+(reqOf(e)-ua.remaining[e]-(ua.stuck[e]||0)),0);
+  const secured=Math.min(total,PIECES.reduce((s,p)=>s+securedCount(p),0));
   const parts=effs.map(e=>`${dispKeyLong(e)} ×${reqOf(e)}${ua.remaining[e]?` <span class="warn">(${ua.remaining[e]} to find)</span>`:' <span style="color:#5fd67a">✓</span>'}`).join(' · ');
   let warn='';
   if(total>12) warn=`<div class="warn">⚠ ${total} lines required but a unit only has 12 (4 pieces × 3 lines) — reduce something.</div>`;
@@ -1389,7 +1451,7 @@ function renderTabs(){
       const a=analyze(p);
       if(rec.risk==='done'){ sub='✓ done'; ok=true; }
       else if(!a.desired.length) sub='nothing needed';
-      else sub=`${Math.min(a.distinctGood.size,a.N)} / ${a.N} secured`;
+      else sub=`${securedCount(p)} / ${a.N} secured`;
     }
     const tile=document.createElement('div');
     tile.className='ptile'+(p===state.active?' active':'')+(isNext?' hasnext':'')+(ok?' done':'');
@@ -1403,11 +1465,12 @@ function renderLineEditors(){
   const box=document.getElementById('lineEditors'); box.innerHTML='';
   const lines=state.pieces[state.active];
   const aAct=reqEffects().length?analyze(state.active):null;   // for the inline status badges
+  const heldA=aAct?heldSet(state.active):new Set();
   const passS=passableSet();
   lines.forEach((l,i)=>{
     const cl0=aAct?aAct.lines[i]:null;
     const isDes=cl0&&!cl0.empty&&aAct.desired.includes(keyOf(cl0.effect));
-    const rowCls=(isDes?(cl0.meets?' done':' low'):'')+(l.locked?' held':'');
+    const rowCls=(isDes&&heldA.has(i)?(cl0.meets?' done':' low'):'')+(l.locked?' held':'');
     const row=h(`<div class="linerow${rowCls}"><span class="ln">Line ${i+1}${l.locked?' 🔒':''}</span></div>`);
     // effect select — a stat type can appear only once per gear, so grey out ones used on other lines
     const usedElsewhere=lines.filter((x,j)=>j!==i&&x.effect).map(x=>x.effect);
@@ -1439,7 +1502,8 @@ function renderLineEditors(){
         const ck=keyOf(cl.effect);
         const isD=aAct.desired.includes(ck), isP=passS.includes(cl.effect);
         const gm=goalTier(cl.effect)!==minTier(cl.effect);
-        if(isD) bg+=cl.meets?`<span class="badge b-good">✓ done &middot; at ${gm?'goal':'min'}</span>`:`<span class="badge b-low">below ${gm?'goal':'min'} &middot; needs ${goalVal(cl.effect)}%+</span>`;
+        // three states a player needs: will stay (secured), will stay but needs its value, or rerolls
+        if(isD) bg+=!heldA.has(i)?`<span class="badge b-other">rerolls</span>`:(cl.meets?`<span class="badge b-good">✓ secured</span>`:`<span class="badge b-low">needs ${goalVal(cl.effect)}%+</span>`);
         else if(reqOf(ck)>0) bg+=(aAct.ua&&aAct.ua.remaining[ck]>0)?'<span class="badge b-other">needed elsewhere</span>':'<span class="badge b-other">spare</span>';
         else if(isP) bg+='<span class="badge b-other">passable bonus</span>';
         else bg+='<span class="badge b-other">not wanted</span>';
@@ -1450,6 +1514,92 @@ function renderLineEditors(){
     }
     box.appendChild(row);
   });
+}
+
+/* ===== ROLL GUIDE: after a roll, enter what the game showed and get Keep / Change =====
+   The verdict uses the same keep rule the cost estimates assume: for Change Effects, more
+   targets present and better placement (Line 3 > 2 > 1), then target values; for Reset
+   Attributes, more target lines at value, then the better seat. Three answers: Press CHANGE
+   (better for the plan), Press KEEP (worse), Either way (no difference to the plan). */
+const __sess={rolls:0,mods:0};
+function guideKind(rec){ const t=(rec&&rec.title||'').replace(/<[^>]+>/g,''); if(!rec||rec.risk==='done') return null; if(/🎯/.test(t)) return 'reset'; if(/🔁/.test(t)) return 'change'; return null; }
+function setGuideButton(piece,rec){
+  const b=document.getElementById('guideBtn'); if(!b) return;
+  const kind=guideKind(rec); b.style.display=kind?'':'none';
+  b.onclick=()=>openRollGuide(piece,kind,rec);
+  const sc=document.getElementById('sessCount'); if(sc){ sc.style.display=__sess.rolls?'':'none'; sc.innerHTML=`<span class="muted">This session</span> <b class="cs-val">${__sess.rolls}</b><span class="muted"> rolls · </span><b class="cs-val">${__sess.mods}</b><span class="muted"> modules</span>`; }
+}
+function openRollGuide(piece,kind,rec){
+  const a=analyze(piece); const targets=a.desired; const opt=a.optional||[];
+  const cur=state.pieces[piece].map(l=>({effect:l.effect,tier:l.tier,locked:!!l.locked}));
+  const plain=(rec.title||'').replace(/<[^>]+>/g,''); const held=new Set();
+  [...plain.matchAll(/Temp-lock Line (\d)/g)].forEach(m=>held.add(+m[1]-1)); if(plain.includes('Temp-lock')) [...plain.matchAll(/\+ Line (\d)/g)].forEach(m=>held.add(+m[1]-1));
+  const fixed=cur.map((l,i)=>l.locked||held.has(i));
+  const cand=cur.map(l=>({...l}));
+  const rollPrice=rerollCost(fixed.filter(Boolean).length);
+  const isT=l=>!!l.effect&&targets.includes(keyOf(l.effect));
+  const scoreEff=ls=>{ let s=0; targets.forEach(tg=>{ const i=ls.findIndex(l=>l.effect&&keyOf(l.effect)===tg); if(i>=0) s+=10+(i===2?2:(i===1?1:0)); }); opt.forEach(tg=>{ const i=ls.findIndex(l=>l.effect&&keyOf(l.effect)===tg); if(i>=0) s+=5; }); return s; };
+  const tval=ls=>ls.reduce((s,l)=>s+(isT(l)?l.tier:0),0);
+  const atGoal=ls=>ls.filter(l=>isT(l)&&l.tier>=goalTier(l.effect)).length;
+  const seat=ls=>ls.reduce((s,l)=>{ if(!isT(l)||l.tier>=goalTier(l.effect)) return s; return goalTier(l.effect)<11 ? s+l.tier : s-(l.tier<=5?0:(l.tier<=10?1:2)); },0);
+  const has=(ls,tg)=>ls.findIndex(l=>l.effect&&keyOf(l.effect)===tg);
+  function judge(){
+    if(!cand.some((c,i)=>c.effect!==cur[i].effect||c.tier!==cur[i].tier)) return null;
+    let d;
+    if(kind==='change'){ d=scoreEff(cand)-scoreEff(cur); if(d===0) d=tval(cand)-tval(cur); }
+    else { d=atGoal(cand)-atGoal(cur); if(d===0) d=seat(cand)-seat(cur); }
+    const vt=d>0?'take':(d<0?'keep':'wash');
+    const gained=targets.filter(tg=>has(cand,tg)>=0&&has(cur,tg)<0), lost=targets.filter(tg=>has(cur,tg)>=0&&has(cand,tg)<0);
+    const parts=[];
+    if(gained.length) parts.push(gained.map(tg=>`${dispKeyLong(tg)} landed on Line ${has(cand,tg)+1}`).join(', '));
+    if(lost.length) parts.push('you lose '+lost.map(tg=>`${dispKeyLong(tg)} on Line ${has(cur,tg)+1}`).join(' and ')+(lost.some(tg=>has(cur,tg)===0)?' (Line 1 refills cheaply)':''));
+    const upG=atGoal(cand)-atGoal(cur); if(kind==='reset'&&upG>0) parts.push(`${upG} target line${upG>1?'s':''} reached its value`); if(kind==='reset'&&upG<0) parts.push('a target line dropped below its value');
+    let why;
+    if(parts.length) why=parts.join('; ')+'.';
+    else if(vt==='wash'){ const sw=cand.map((c,i)=>c.effect!==cur[i].effect?`${cur[i].effect||'empty'} → ${c.effect||'empty'} on Line ${i+1}`:'').filter(Boolean).join(', '); why=`No difference to the plan${sw?': '+sw:''}. Take whichever you would rather hold.`; }
+    else if(kind==='change') why=vt==='take'?'Same effects, better value on a target line.':'Same effects, lower value on a target line.';
+    else why=vt==='take'?'Better seat to keep resetting from.':'Worse seat to keep resetting from.';
+    return {vt,why};
+  }
+  const tcls=t=>t>=15?'tk':(t>=12?'tb':'');
+  const valTxt=l=>l.effect?`T${l.tier} · ${EFFECTS[l.effect].vals[l.tier-1]}%`:'—';
+  const staticLine=(l,i,lock)=>`<div class="gl${lock?' locked':''}"><span class="ico">${lock?'🔒':(i+1)}</span><div><div class="eff">${l.effect||'(empty)'}</div><div class="val ${tcls(l.tier)}">${valTxt(l)}</div></div></div>`;
+  let veil=document.getElementById('guideVeil');
+  if(!veil){ veil=h('<div class="veil" id="guideVeil"><div class="gmodal"><button class="gclose">✕</button><h3 id="gTitle"></h3><div class="gsub" id="gSub"></div><div class="gcols"><div class="gcol"><div class="hd"><span>CURRENT</span><span>Keep</span></div><div id="gCur"></div></div><div class="gcol new"><div class="hd"><span>NEW ROLL</span><span>Change</span></div><div id="gNew"></div></div></div><div class="gverdict" id="gVerdict"></div><div class="gacts"><button class="gkeep" id="gKeep">Keep</button><button class="gchange" id="gChange">Change</button></div></div></div>'); document.body.appendChild(veil); veil.addEventListener('click',ev=>{ if(ev.target===veil) veil.style.display='none'; }); veil.querySelector('.gclose').onclick=()=>veil.style.display='none'; }
+  veil.style.display='flex';
+  document.getElementById('gTitle').textContent=(kind==='change'?'Change Effects':'Reset Attributes')+' · '+piece;
+  document.getElementById('gSub').textContent=kind==='change'?'Set the right side to what the game shows. Locked lines are carried over.':'Set the new values the game shows. Locked lines are carried over; effects do not change on a reset.';
+  const EFF_OPTS=['',...EFF_NAMES];
+  function render(){
+    document.getElementById('gCur').innerHTML=cur.map((l,i)=>staticLine(l,i,fixed[i])).join('');
+    const N=document.getElementById('gNew'); N.innerHTML='';
+    cur.forEach((l,i)=>{
+      if(fixed[i]||(kind==='reset'&&!l.effect)){ N.insertAdjacentHTML('beforeend',staticLine(l,i,fixed[i])); return; }
+      const row=h(`<div class="gl"><span class="ico">${i+1}</span><div></div></div>`); const box=row.children[1];
+      if(kind==='change'){
+        const es=document.createElement('select');
+        const used=cand.filter((x,j)=>j!==i&&x.effect).map(x=>x.effect);
+        EFF_OPTS.forEach(e=>{ const o=document.createElement('option'); o.value=e; o.textContent=e||'(empty)'; if(e&&used.includes(e)) o.disabled=true; if(e===cand[i].effect) o.selected=true; es.appendChild(o); });
+        es.onchange=()=>{ cand[i].effect=es.value; if(!cand[i].effect) cand[i].tier=11; render(); };
+        box.appendChild(es);
+      } else box.insertAdjacentHTML('beforeend',`<div class="eff">${cand[i].effect}</div>`);
+      const ts=document.createElement('select');
+      if(!cand[i].effect){ ts.disabled=true; ts.innerHTML='<option>—</option>'; }
+      else for(let t=1;t<=15;t++){ const o=document.createElement('option'); o.value=t; o.textContent=`T${t} · ${EFFECTS[cand[i].effect].vals[t-1]}%${t>=15?' Black':(t>=12?' Blue':'')}`; o.className=tierClass(t); if(t===cand[i].tier) o.selected=true; ts.appendChild(o); }
+      ts.onchange=()=>{ cand[i].tier=+ts.value; render(); };
+      box.appendChild(ts); N.appendChild(row);
+    });
+    const V=document.getElementById('gVerdict'), bK=document.getElementById('gKeep'), bC=document.getElementById('gChange');
+    const j=judge();
+    if(!j){ V.className='gverdict'; V.innerHTML='<b class="muted">—</b><span class="why muted">Fill in the new roll.</span>'; bK.disabled=true; bC.disabled=true; return; }
+    V.className='gverdict'+(j.vt==='take'?' take':'');
+    V.innerHTML=`<b${j.vt==='wash'?' class="muted"':''}>${j.vt==='take'?'Press CHANGE':(j.vt==='keep'?'Press KEEP':'Either way')}</b><span class="why">${j.why}</span>`;
+    bK.disabled=false; bC.disabled=false; bC.style.opacity=j.vt==='keep'?.6:1; bK.style.opacity=j.vt==='take'?.6:1;
+  }
+  const finish=took=>{ __sess.rolls++; __sess.mods+=rollPrice; if(took){ state.pieces[piece]=cand.map((c,i)=>({effect:c.effect,tier:c.tier,locked:cur[i].locked})); if(typeof EV_CACHE!=='undefined') EV_CACHE.clear(); save(); } veil.style.display='none'; renderAll(); };
+  document.getElementById('gKeep').onclick=()=>finish(false);
+  document.getElementById('gChange').onclick=()=>finish(true);
+  render();
 }
 
 function renderAdvice(){
@@ -1468,6 +1618,7 @@ function renderAdvice(){
     if(np&&np.need>0){ target=np.p; rec=recommend(np.p); }
     else rec=recommend(state.active);
   }
+  setGuideButton(target,rec);
 
   // KPI strip: the two cost numbers, front and center in the decision hub
   const strip=document.getElementById('costStrip');
@@ -1491,13 +1642,13 @@ function renderAdvice(){
   if(reqd && !allMet){
     const emptyPieces=PIECES.filter(p=>state.pieces[p].every(l=>!l.effect));
     if(emptyPieces.length>=2)
-      adv.appendChild(h(`<div class="muted" style="margin-bottom:8px;font-size:13px">Enter ${emptyPieces.join(' / ')} first. The plan improves with full information.</div>`));
+      adv.appendChild(h(`<div class="muted" style="margin-bottom:8px;font-size:13px">Enter ${emptyPieces.length===4?'your pieces':emptyPieces.join(', ')} first. The plan improves with full information.</div>`));
   }
 
   // clear indicator when the next move is NOT on the piece being viewed —
   // so nobody reads "Change Effects" and starts rolling the wrong piece
   if(reqd && !allMet && target!==state.active){
-    adv.appendChild(h(`<div class="switchbar"><span class="txt">You are editing <b>${state.active}</b>. This move is for <b>${target}</b>.</span><button class="btn-primary" onclick="state.active='${target}';save();renderAll()">Switch to ${target}</button></div>`));
+    var wrongPiece=true;   // the card itself becomes the gate (built below)
   }
   // Split the advice body: the instruction stays on the card; every explanatory
   // warn/muted note folds into a "Why & alternatives" expander below it.
@@ -1520,20 +1671,23 @@ function renderAdvice(){
         const marg=Math.round(withOpt-est);
         if(isFinite(marg) && marg>0) carryTxt=` Add about ${marg} more if it ends up carrying ${aT.optional.map(dispKey).join('/')}.`;
       }
-      whyItems.push(`<span>About ${est} modules to finish ${target}'s required effects.${carryTxt} Simulated average; luck swings hard.</span>`);
+      whyItems.push(`<span>Finishing ${target}: about ${est} modules.${carryTxt} Simulated average; luck swings hard.</span>`);
     }
   }
 
   // open-quota / forced-carrier context -> Why box
   if(reqd && !allMet && Object.keys(plan.forcedOn||{}).length){
-    whyItems.push(`<span class="warn">${Object.entries(plan.forcedOn).map(([e,ps])=>`${e} must now come from ${ps.join(' / ')}; the other pieces finished without it`).join('; ')}.</span>`);
+    // only worth saying when some pieces are ruled out: an effect every open piece must carry is no news
+    const open=PIECES.filter(p=>recommend(p).risk!=='done');
+    const narrowed=Object.entries(plan.forcedOn).filter(([e,ps])=>ps.length<open.length);
+    if(narrowed.length) whyItems.push(`<span class="warn">${narrowed.map(([e,ps])=>`${dispKeyLong(e)} now has to come from ${ps.join(' / ')}`).join('; ')}. The other pieces finished without it.</span>`);
   }
 
   const a=rec.a;
   // lock-timing note when the global action is a lock -> Why box
   if(a && reqd && rec.risk!=='done' && (rec.title||'').startsWith('🔒')){
     const evap=(a.missing||[]).some(e=>reqOf(e)<4);
-    whyItems.push(`<span>💡 Lock timing: a lock only matters once you roll this piece again, and the price is the same later.${evap?' If you pause here, another piece might cover the shared effect and save this lock.':''}</span>`);
+    whyItems.push(`<span>Lock timing: a lock only matters once you roll this piece again, and the price is the same later.${evap?' If you pause here, another piece might cover the shared effect and save this lock.':''}</span>`);
   }
 
   // ---- risk line: a reroll that can touch a finished, unlocked line says so on the card ----
@@ -1554,17 +1708,26 @@ function renderAdvice(){
     if(allMet){ const tot=totalReqLines(); securedLine=`<div class="secured">All ${tot} required lines are secured across the unit. Nothing left to roll.</div>`; }
     else if(got.length) securedLine=`<div class="secured">Secured on ${target}: ${got.join(' · ')}</div>`;
   }
-  const tag=allMet?'':`<span class="ptag">${target}${a?` · ${Math.min(a.distinctGood.size,a.N)} / ${a.N} secured`:''}</span>`;
-  const step=h(`<div class="step ${rec.risk}"><h3>${rec.title}${tag?` ${tag}`:''}</h3>${cleanBody?`<div style="font-size:13.5px">${cleanBody}</div>`:''}${riskLine}${securedLine}${(rec.cost||evPill)?`<div style="margin-top:8px">${rec.cost?`<span class="pill">${rec.cost}</span><span class="pill">${riskLabel(rec.risk)}</span>`:''}${evPill}</div>`:''}</div>`);
-  adv.appendChild(step);
+  const tag=allMet?'':`<span class="ptag">${target}${a?` · ${securedCount(target)} / ${a.N} secured`:''}</span>`;
+  const pillsHtml=(rec.cost||evPill)?`<div style="margin-top:8px">${rec.cost?`<span class="pill">${rec.cost}</span><span class="pill">${riskLabel(rec.risk)}</span>`:''}${evPill}</div>`:'';
+  if(typeof wrongPiece!=='undefined' && wrongPiece){
+    // the move is for another piece: the card is the gate. Loud switch first, the instruction
+    // dimmed underneath so it can be read ahead but not mistaken for a move on this piece.
+    const gate=h(`<div class="gate"><div class="top"><span class="warnico">⚠️</span><b>Switch to ${target} before you roll</b><span class="muted">This move is for ${target}, not ${state.active}.</span><button class="btn-primary big">Switch to ${target}</button></div><div class="next"><div class="tag">Then, on ${target}:</div><h3>${rec.title}</h3>${cleanBody?`<div style="font-size:13.5px">${cleanBody}</div>`:''}${riskLine}${pillsHtml}</div></div>`);
+    gate.querySelector('button').onclick=()=>{ state.active=target; save(); renderAll(); };
+    adv.appendChild(gate);
+  }else{
+    const step=h(`<div class="step ${rec.risk}"><h3>${rec.title}${tag?` ${tag}`:''}</h3>${cleanBody?`<div style="font-size:13.5px">${cleanBody}</div>`:''}${riskLine}${securedLine}${pillsHtml}</div>`);
+    adv.appendChild(step);
+  }
 
   // ---- unit progress line in section 2 ----
   const up=document.getElementById('unitProg');
   if(up){
     if(!reqd){ up.style.display='none'; }
     else{
-      const tot=totalReqLines(); const ua=plan.ua;
-      const sec=reqEffects().reduce((s,e)=>s+(reqOf(e)-ua.remaining[e]-(ua.stuck[e]||0)),0);
+      const tot=totalReqLines();
+      const sec=Math.min(tot,PIECES.reduce((s,p)=>s+securedCount(p),0));
       const fin=PIECES.filter(p=>recommend(p).risk==='done').length;
       up.style.display='flex';
       document.getElementById('unitProgBar').style.width=(tot?Math.round(100*sec/tot):0)+'%';
