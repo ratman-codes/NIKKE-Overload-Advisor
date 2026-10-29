@@ -64,6 +64,8 @@
   .step.orange{border-color:var(--orange);background:linear-gradient(90deg,var(--orangebg),var(--panel2) 60%)}
   .step.red{border-color:var(--red);background:linear-gradient(90deg,var(--redbg),var(--panel2) 60%)}
   .step.done{border-color:var(--accent2);background:linear-gradient(90deg,#20143d,var(--panel2) 60%)}
+  .step.pending{border-color:var(--line);color:var(--muted)}
+  .step.pending h3{color:var(--muted);font-weight:500}
   .step h3{margin:0 0 6px;font-size:17px}
   .step .why{color:var(--muted);font-size:13.5px;margin-top:8px}
   .pill{display:inline-block;font-size:12px;padding:2px 9px;border-radius:20px;border:1px solid var(--line);background:#12161c;margin-right:6px}
@@ -269,7 +271,7 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
   <h1>NIKKE Overload Reroll Advisor <span style="color:var(--accent2);font-size:15px;vertical-align:middle">Whole-unit planner</span></h1>
   <p class="sub">Set what the whole unit needs (for example Elemental ×4, ATK ×4, Ammo ×2) and follow one next move across all four pieces.</p>
 
-  <div class="warnline">⚠️&nbsp;<span><b style="color:#e0a94a">Guide only. Use your own judgment.</b> Costs are simulated averages and luck swings hard. <details style="display:inline"><summary style="display:inline;cursor:pointer;color:var(--accent)">more</summary> <span class="muted">This tool is one reading of the community flowcharts and may have bugs or miss edge cases. Check anything expensive before spending modules. Estimates assume you follow the advice, including sitting on a low value while hunting Blue or Black. Stop when your budget says stop.</span></details></span></div>
+  <div class="warnline">⚠️&nbsp;<span><b style="color:#e0a94a">Guide only. Use your own judgment.</b> Costs are averages; your luck will vary. <details style="display:inline"><summary style="display:inline;cursor:pointer;color:var(--accent)">more</summary> <span class="muted">Every step is the cheapest move by exact calculation, using the game's own reroll odds and prices. If a patch changes those, the numbers change with them. Estimates assume you follow the advice, including sitting on a low value while hunting Blue or Black. Stop when your budget says stop.</span></details></span></div>
 
   <!-- ================= TARGETS ================= -->
   <div class="card">
@@ -337,7 +339,7 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
       <button class="btn-primary guidebtn" id="guideBtn" style="display:none" title="After a roll, enter what the game shows and get a Keep or Change answer">🎲 Guide me roll by roll <span>· tells you Keep or Change</span></button>
     </div>
     <div id="costStrip" class="coststrip" style="display:none;margin:0 0 12px" title="Expected Custom Modules. Simulated averages; luck swings hard.">
-      <span class="cs-item"><span class="muted">Modules left</span> <b class="cs-val" id="statLeft">—</b></span>
+      <span class="cs-item"><span class="muted">Modules to go</span> <b class="cs-val" id="statLeft">—</b></span>
       <span class="cs-item"><span class="muted">Full build</span> <b class="cs-val" id="statFull">—</b></span>
       <span class="cs-item" style="flex:1;min-width:170px;display:flex;align-items:center;gap:8px"><span class="meter" style="flex:1;margin-top:0"><i id="costMeter" style="width:0%"></i></span><span class="muted" id="costPct" style="font-size:12px;white-space:nowrap"></span></span>
           <span class="cs-item" id="sessCount" style="display:none;margin-left:auto"></span>
@@ -377,7 +379,7 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
         <tr><td>Lock a line</td><td>1 → 2</td><td>3</td><td>30</td></tr>
         <tr><td>Reroll</td><td>2</td><td>3</td><td>—</td></tr>
       </table>
-      <p class="muted" style="font-size:12.5px">A temp lock holds a line for one reroll and costs keys instead of modules. Unlocking is free but never refunds modules.</p>
+      <p class="muted" style="font-size:12.5px">A temp lock holds a line for one reroll and costs no modules. Unlocking is free but never refunds modules.</p>
     </details>
     <details>
       <summary>The two reroll buttons and key terms</summary>
@@ -387,7 +389,7 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
         <li><b>Value rule since the Oct 2026 patch:</b> a reset never repeats a line's current value. Rolling from a Phase 1 to 5 value makes every other value about 14% more likely; rolling from Tier 11 or higher gains nothing. Black from a Phase 1 to 5 value takes about 88 resets (99 from Tier 11+); Blue or better about 22 (25). When hunting Blue or Black, accept only the target tier. A Phase 6 to 10 value is only about 6% worse than Phase 1 to 5, so keep good mid rolls. If you stop early, take the best value offered; re-parking later costs about 2 rolls. Change Effects is unaffected.</li>
         <li><b>Blue line</b> = Tier 12 to 14. <b>Black line</b> = Tier 15 (about 1% per roll).</li>
         <li><b>Lock</b> a good line before fishing with Change Effects so you keep it. Avoid locking Line 1 first unless it is Blue or Black: Line 1 always rolls something, so fill it last.</li>
-        <li><b>Temp lock keys</b> hold a line for one reroll. Good for short holds, such as protecting a Line 1 roll for one spin. For long fishing on Lines 2 and 3 the key cost adds up; the Temp locks switch in section 3 shows it.</li>
+        <li><b>Temp locks</b> hold a line for one reroll. Good for short holds, such as protecting a Line 1 roll for one spin. For long fishing on Lines 2 and 3 the cost adds up; the Temp locks switch in section 3 shows it.</li>
         <li><b>CP tip:</b> the first overload roll is always Tier 11 and option ranks feed combat power, so for a supporter you only want CP from, leaving the initial rolls alone can be the best choice.</li>
         <li><b>What you fish last decides the cost.</b> Community lock-order sims (Pesu My): plans that end on Line 1 (100% appearance) cost about 55 to 58 modules, plans that end on Line 2 (50%) 70 to 83, and plans that end on Line 3 (30%) 102 to 107. Locking a lone Line 2 early costs only 2 to 3 modules more than the chart's keep rolling. Leaving Line 3 for last roughly doubles the bill.</li>
       </ul>
@@ -795,7 +797,13 @@ function buildBenchmarkEV(){
   });
   if(!feasible) return null;
   let ev=0, var2=0, keys=0;
-  sets.forEach(T=>{ if(T.length){ const s=pieceCostStatForTargets(null,T,EMPTY_CLS); ev+=s.ev; var2+=s.sd*s.sd; keys+=s.keys||0; } });
+  const EMPTY_LINES=[0,1,2].map(()=>({effect:'',tier:11,locked:false}));
+  sets.forEach(T=>{ if(T.length){
+    const s=pieceCostStatForTargets(null,T,EMPTY_CLS);
+    // exact modules from an empty piece when the solver table exists (same source as "Modules to go"); the simulator supplies the spread and temp locks
+    const ex=(typeof Exact!=='undefined')?Exact.valueFor(T,EMPTY_LINES):null;
+    ev+=(ex!==null?ex:s.ev); var2+=s.sd*s.sd; keys+=s.keys||0;
+  } });
   return isFinite(ev)?{ev:Math.round(ev),sd:Math.round(Math.sqrt(var2)),keys:Math.round(keys)}:null;
 }
 
@@ -956,10 +964,9 @@ function totalRemainingEV(){
   let tot=0, var2=0, keys=0;
   PIECES.forEach(p=>{
     const s=pieceCostStatForTargets(p,sets[p],cls[p]);
-    // exact modules for a piece whose target set is settled (no extra quota assigned here);
-    // the simulator still supplies the spread and the keys
-    const settled=sets[p].length===plan.sets[p].must.length;
-    const ex=(settled&&typeof Exact!=='undefined')?Exact.value(p,state.pieces[p]):null;
+    // exact modules for the piece's assigned target set (musts plus any quota assigned above);
+    // the simulator still supplies the spread and the temp locks
+    const ex=(typeof Exact!=='undefined'&&sets[p].length)?Exact.valueFor(sets[p],state.pieces[p]):(sets[p].length?null:0);
     if(ex!==null){ tot+=ex; var2+=s.sd*s.sd; keys+=s.keys||0; }
     else if(isFinite(s.ev)){ tot+=s.ev; var2+=s.sd*s.sd; keys+=s.keys||0; }
   });
@@ -990,7 +997,7 @@ function recommend(piece){
   saved.forEach(l=>l.locked=false);
   if(!held.length){
     if(/^🔒 Lock Line/.test((rec.title||'').replace(/<[^>]+>/g,'')))
-      return Object.assign({},rec,{body:(rec.body||'')+'<span class="muted"> Module lock, not a temp lock: this line is finished and stays locked for every remaining roll, so keys would cost more than the modules.</span>'});
+      return Object.assign({},rec,{body:(rec.body||'')+'<span class="muted"> Module lock, not a temp lock: this line is finished and stays locked for every remaining roll, so temp locks would cost more than the modules.</span>'});
     return rec;
   }
   const nPerm=state.pieces[piece].filter(l=>l.locked).length;
@@ -998,9 +1005,9 @@ function recommend(piece){
   const names=held.map(i=>'Line '+(i+1)).join(' + ');
   return Object.assign({},cur,{
     risk:cur.risk||rec.risk, a:rec.a,
-    title:`🔑 Temp-lock ${names} (${keys} keys this roll) + ${cur.title}`,
+    title:`🔑 Temp-lock ${names} + ${cur.title}`,
     body:`Temp-lock ${names}, then: ${cur.body||''}<span class="muted"> Reapply the temp lock each roll with "load previous lock settings".</span>`,
-    cost:`${cur.cost?cur.cost+' · ':''}+ ${keys} keys per roll`});
+    cost:`${cur.cost?cur.cost+' · ':''}+ ${keys} temp locks per roll`});
 }
 // A line counts as SECURED (for display) only when it will survive: locked, temp-held by the
 // next step, or on a piece whose next step does not reroll it. An unlocked at-goal line that
@@ -1423,8 +1430,8 @@ function renderGoalUI(){
   if(sw){
     sw.checked=!!state.tempLocks;
     const hintTxt=state.tempLocks
-      ?'Temp locks hold lines you will free again (a target landed below its value). Finished lines still get a module lock, which is cheaper than keys over many rolls. Each step shows the keys it burns per roll.'
-      :'Lock steps use Custom Modules. Turn this on if you have temp lock keys to spend.';
+      ?'Temp locks hold lines you will free again (a target landed below its value). Finished lines still get a module lock, which is cheaper than temp locks over many rolls. Each step shows the temp locks it burns per roll.'
+      :'Lock steps use Custom Modules. Turn this on if you have temp locks to spend.';
     document.getElementById('tempHint').textContent=hintTxt; sw.closest('.lockmode').title=hintTxt;
     if(!sw._wired){ sw._wired=true; sw.onchange=()=>{ state.tempLocks=sw.checked; EV_CACHE.clear(); save(); renderAll(); }; }
   }
@@ -1453,15 +1460,15 @@ function renderBuildSummary(){
   const evTot=totalRemainingEV();
   const evOk=evTot!==null&&evTot.ev>0;
   const bench=buildBenchmarkEV();
-  const kTxt=s=>(state.tempLocks&&s&&s.keys)?` + ~${s.keys} keys`:'';
-  const evTxt=evOk?` &nbsp;·&nbsp; <span class="muted">📉 ~${evTot.ev} ±${evTot.sd} modules${kTxt(evTot)} left from here (rough EV, incl. unassigned quota${state.tempLocks?', temp-lock mode':''})</span>`:'';
+  const kTxt=s=>(state.tempLocks&&s&&s.keys)?` + ~${s.keys} temp locks`:'';
+  const evTxt=evOk?` &nbsp;·&nbsp; <span class="muted">📉 ~${evTot.ev} ±${evTot.sd} modules${kTxt(evTot)} to go from here (rough EV, incl. unassigned quota${state.tempLocks?', temp-lock mode':''})</span>`:'';
   const benchTxt=bench?` &nbsp;·&nbsp; <span class="muted">📦 this build from scratch ≈ ~${bench.ev} ±${bench.sd} modules${kTxt(bench)} on average</span>`:'';
   el.innerHTML=`<b>Build: ${total} / 12 lines</b> &nbsp;·&nbsp; ${parts} &nbsp;<span class="muted">— secured ${secured} of ${total}</span>${evTxt}${benchTxt}${warn}`;
   // compact always-visible chips in the collapsed header
   if(chips){
     const t=effs.map(e=>`<span class="badge ${ua.remaining[e]?'b-good':'b-lock'}" title="${dispKeyLong(e)}${ua.remaining[e]?' — '+ua.remaining[e]+' to find':' — done'}">${dispKey(e)} ×${reqOf(e)}${ua.remaining[e]?'':' ✓'}</span>`).join(' ');
     const p=pass.length?' '+pass.map(e=>`<span class="badge b-other" title="Passable bonus">${EFF_ABBR[e]||e} ~</span>`).join(' '):'';
-    const evChip=evOk?` <span class="badge b-other" title="Rough expected modules remaining from the current state${bench?' / full-build-from-scratch average':''}">📉 ~${evTot.ev} left${bench?` / ~${bench.ev} full`:''}</span>`:'';
+    const evChip=evOk?` <span class="badge b-other" title="Expected modules remaining from the current state${bench?' / full build from scratch':''}">📉 ${Exact.busy()?'…':`~${evTot.ev} to go${bench?` / ~${bench.ev} full`:''}`}</span>`:'';
     const warnChip=warn?' <span class="badge b-low">⚠</span>':'';
     chips.innerHTML=`${t}${p} <span class="badge b-other">${total}/12</span> <span class="badge b-other">secured ${secured}/${total}</span>${evChip}${warnChip}`;
   }
@@ -1661,7 +1668,8 @@ self.onmessage=ev=>{ const {id,spec}=ev.data; try{ const t0=Date.now(); const r=
 const Exact=(function(){
   let worker=null; const tables=new Map(); const pending=new Map(); const waiters=[];
   function getWorker(){ if(worker) return worker; try{ worker=new Worker(URL.createObjectURL(new Blob([SOLVER_SRC],{type:'text/javascript'}))); }catch(e){ return null; }
-    worker.onmessage=ev=>{ const r=ev.data; const p=pending.get(r.id); pending.delete(r.id); if(r.ok){ tables.set(r.id,{V:r.V,Q:r.Q,idx3:r.idx3,L:r.L,cls:r.cls,spec:p&&p.spec}); } waiters.splice(0).forEach(f=>{ try{ f(r.id); }catch(e){} }); };
+    // listeners stay registered: every finished table triggers a re-render, since one render can request several tables
+    worker.onmessage=ev=>{ const r=ev.data; const p=pending.get(r.id); pending.delete(r.id); if(r.ok){ tables.set(r.id,{V:r.V,Q:r.Q,idx3:r.idx3,L:r.L,cls:r.cls,spec:p&&p.spec}); } waiters.slice().forEach(f=>{ try{ f(r.id); }catch(e){} }); };
     return worker; }
   // a solver spec from explicit target keys; minSlots < keys.length means "any minSlots of these"
   function specFromKeys(d,minSlots){
@@ -1692,7 +1700,8 @@ const Exact=(function(){
   function status(piece){ const sp=specFor(piece); if(!sp) return 'none'; if(tables.has(sp.key)) return 'ready'; ensure(piece); return pending.has(sp.key)?'pending':'none'; }
   // Q per action for `lines` of `piece` (Infinity = not available) and the best action, or null
   function qvalues(piece,lines){ const tbl=ensure(piece); if(!tbl||!tbl.Q) return null; const s=stateIndex(tbl,piece,lines); if(s<0) return null; const Q=Array.from(tbl.Q.subarray(s*9,s*9+9)); let best=-1; for(let a=0;a<9;a++) if(isFinite(Q[a])&&(best<0||Q[a]<Q[best])) best=a; if(best<0) return null; return {Q,best}; }
-  return {value,valueFor,ensure,onReady,status,qvalues};
+  function busy(){ return pending.size>0; }   // a table is still computing: show a placeholder, never a number that will change
+  return {value,valueFor,ensure,onReady,status,qvalues,busy};
 })();
 
 /* ===== SOLVER-CHOSEN STEPS =====
@@ -1858,10 +1867,11 @@ function renderAdvice(){
     if(remEV===null&&benchEV===null){ strip.style.display='none'; }
     else{
       strip.style.display='flex';
-      const kU=s=>(state.tempLocks&&s.keys)?` · ${s.keys} keys`:'';
-      document.getElementById('statLeft').innerHTML=(remEV===null?'—':`~${remEV.ev}<span class="unit">±${remEV.sd}${kU(remEV)}</span>`);
-      document.getElementById('statFull').innerHTML=(benchEV===null?'—':`~${benchEV.ev}<span class="unit">±${benchEV.sd}${kU(benchEV)}</span>`);
-      const pct=(remEV!==null&&benchEV&&benchEV.ev>0)?Math.max(0,Math.min(100,Math.round(100*(1-remEV.ev/benchEV.ev)))):null;
+      const kU=s=>(state.tempLocks&&s.keys)?` · ${s.keys} temp locks`:'';
+      const busy=Exact.busy();   // tables still computing: placeholder instead of a simulated number that would change in a moment
+      document.getElementById('statLeft').innerHTML=busy?'<span class="muted">…</span>':(remEV===null?'—':`~${remEV.ev}<span class="unit">±${remEV.sd}${kU(remEV)}</span>`);
+      document.getElementById('statFull').innerHTML=busy?'<span class="muted">…</span>':(benchEV===null?'—':`~${benchEV.ev}<span class="unit">±${benchEV.sd}${kU(benchEV)}</span>`);
+      const pct=(!busy&&remEV!==null&&benchEV&&benchEV.ev>0)?Math.max(0,Math.min(100,Math.round(100*(1-remEV.ev/benchEV.ev)))):null;
       document.getElementById('costMeter').style.width=(pct===null?0:pct)+'%';
       document.getElementById('costPct').textContent=pct===null?'':`${pct}% done`;
     }
@@ -1894,7 +1904,8 @@ function renderAdvice(){
     if(est!==null && isFinite(est) && est>0){
       const stat=rec.a?pieceCostStatForTargets(target,rec.a.desired,rec.a.lines):null;
       const exactV=Exact.value(target,state.pieces[target]);   // exact expected modules when the solver has this piece's targets
-      evPill=exactV!==null?`<span class="pill" title="Exact expected modules to finish this piece (keys, if any, are estimated)">~${Math.round(exactV)} modules to finish ${target} · exact</span>`
+      evPill=exactV!==null?`<span class="pill" title="Exact expected modules to finish this piece (temp locks, if any, are estimated)">~${Math.round(exactV)} modules to finish ${target} · exact</span>`
+            :Exact.busy()?`<span class="pill">working out the exact cost…</span>`
                           :`<span class="pill" title="Expected modules to finish this piece">~${est}${stat?` ±${Math.round(stat.sd)}`:''} modules to finish ${target}</span>`;
       let carryTxt='';
       const aT=rec.a;
@@ -1942,7 +1953,10 @@ function renderAdvice(){
   }
   const tag=allMet?'':`<span class="ptag">${target}${a?` · ${securedCount(target)} / ${a.N} secured`:''}</span>`;
   const pillsHtml=(rec.cost||evPill)?`<div style="margin-top:8px">${rec.cost?`<span class="pill">${rec.cost}</span><span class="pill">${riskLabel(rec.risk)}</span>`:''}${rec.exact==='ok'?'<span class="pill" title="Checked against the exact solver">✓ exact</span>':(rec.exact==='pending'?'<span class="pill">checking exactly…</span>':'')}${evPill}</div>`:'';
-  if(typeof wrongPiece!=='undefined' && wrongPiece){
+  if(rec.exact==='pending'){
+    // the exact table is still computing (well under a second): a placeholder, never a move that could change
+    adv.appendChild(h(`<div class="step pending"><h3>Working out the exact move…${tag?` ${tag}`:''}</h3></div>`));
+  }else if(typeof wrongPiece!=='undefined' && wrongPiece){
     // the move is for another piece: the card is the gate. Loud switch first, the instruction
     // dimmed underneath so it can be read ahead but not mistaken for a move on this piece.
     const gate=h(`<div class="gate"><div class="top"><span class="warnico">⚠️</span><b>Switch to ${target} before you roll</b><span class="muted">This move is for ${target}, not ${state.active}.</span><button class="btn-primary big">Switch to ${target}</button></div><div class="next"><div class="tag">Then, on ${target}:</div><h3>${rec.title}</h3>${cleanBody?`<div style="font-size:13.5px">${cleanBody}</div>`:''}${riskLine}${pillsHtml}</div></div>`);
@@ -1967,21 +1981,21 @@ function renderAdvice(){
     }
   }
 
-  if(whyItems.length)
+  if(whyItems.length && rec.exact!=='pending')
     adv.appendChild(h(`<details class="why"><summary>Why &amp; alternatives</summary><div class="wb">${whyItems.map(w=>`<div>${w}</div>`).join('')}</div></details>`));
 
   // ---- active-piece panel (section 2): its own pending step, for reference ----
   const aAct=analyze(state.active);
   let aim=' · needs: '+(aAct.desired.length?aAct.desired.map(dispKeyLong).join(', '):'nothing, all covered');
   if(aAct.optional && aAct.optional.length)
-    aim+=' · bonus if it lands: '+aAct.optional.map(e=>`${dispKeyLong(e)} (${aAct.ua.remaining[e]} left)`).join(', ');
+    aim+=' · bonus if it lands: '+aAct.optional.map(e=>`${dispKeyLong(e)} (${aAct.ua.remaining[e]} to find)`).join(', ');
   document.getElementById('pieceMeta').textContent=`${aAct.lockedCount} locked${aim}`;
   const actBox=document.getElementById('activeAdvice');
   if(actBox){
     if(!reqd || target===state.active){ actBox.textContent=''; }   // the NEXT tag on the tile already says it
     else{
       const recAct=recommend(state.active);
-      actBox.innerHTML=recAct.risk==='done'?'This piece is finished.':`Later step for this piece: <i>${recAct.title}</i>`;
+      actBox.innerHTML=recAct.exact==='pending'?'<span class="muted">…</span>':(recAct.risk==='done'?'This piece is finished.':`Later step for this piece: <i>${recAct.title}</i>`);
     }
   }
 }

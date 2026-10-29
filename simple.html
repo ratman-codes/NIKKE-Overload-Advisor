@@ -68,6 +68,8 @@
   .step.orange{border-color:var(--orange);background:linear-gradient(90deg,var(--orangebg),var(--panel2) 60%)}
   .step.red{border-color:var(--red);background:linear-gradient(90deg,var(--redbg),var(--panel2) 60%)}
   .step.done{border-color:var(--accent2);background:linear-gradient(90deg,#20143d,var(--panel2) 60%)}
+  .step.pending{border-color:var(--line);color:var(--muted)}
+  .step.pending h3{color:var(--muted);font-weight:500}
   .step h3{margin:0 0 6px;font-size:17px}
   .step .why{color:var(--muted);font-size:13.5px;margin-top:8px}
   .pill{display:inline-block;font-size:12px;padding:2px 9px;border-radius:20px;border:1px solid var(--line);background:#12161c;margin-right:6px}
@@ -218,7 +220,7 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
   <h1>NIKKE Overload Reroll Advisor</h1>
   <p class="sub">Shows the single best next move for one gear piece: Change Effects, Reset Attributes or Lock. Set your target, enter the piece, follow the step.</p>
 
-  <div class="warnline">⚠️&nbsp;<span><b style="color:#e0a94a">Guide only. Use your own judgment.</b> Luck swings hard. <details style="display:inline"><summary style="display:inline;cursor:pointer;color:var(--accent)">more</summary> <span class="muted">This tool is one reading of the community flowcharts and may have bugs or miss edge cases. Check anything expensive before spending modules. Stop when your budget says stop.</span></details></span></div>
+  <div class="warnline">⚠️&nbsp;<span><b style="color:#e0a94a">Guide only. Use your own judgment.</b> Costs are averages; your luck will vary. <details style="display:inline"><summary style="display:inline;cursor:pointer;color:var(--accent)">more</summary> <span class="muted">Every step is the cheapest move by exact calculation, using the game's own reroll odds and prices. If a patch changes those, the numbers change with them. Estimates assume you follow the advice, including sitting on a low value while hunting Blue or Black. Stop when your budget says stop.</span></details></span></div>
 
   <!-- ================= TARGETS ================= -->
   <div class="card">
@@ -314,7 +316,7 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
         <tr><td>Lock a line</td><td>1 → 2</td><td>3</td><td>30</td></tr>
         <tr><td>Reroll</td><td>2</td><td>3</td><td>—</td></tr>
       </table>
-      <p class="muted" style="font-size:12.5px">A temp lock holds a line for one reroll and costs keys instead of modules. Unlocking is free but never refunds modules.</p>
+      <p class="muted" style="font-size:12.5px">A temp lock holds a line for one reroll and costs no modules. Unlocking is free but never refunds modules.</p>
     </details>
     <details>
       <summary>The two reroll buttons and key terms</summary>
@@ -631,7 +633,7 @@ function recommend(piece){
   saved.forEach(l=>l.locked=false);
   if(!held.length){
     if(/^🔒 Lock Line/.test((rec.title||'').replace(/<[^>]+>/g,'')))
-      return Object.assign({},rec,{body:(rec.body||'')+'<span class="muted"> Module lock, not a temp lock: this line is finished and stays locked for every remaining roll, so keys would cost more than the modules.</span>'});
+      return Object.assign({},rec,{body:(rec.body||'')+'<span class="muted"> Module lock, not a temp lock: this line is finished and stays locked for every remaining roll, so temp locks would cost more than the modules.</span>'});
     return rec;
   }
   const nPerm=state.pieces[piece].filter(l=>l.locked).length;
@@ -639,9 +641,9 @@ function recommend(piece){
   const names=held.map(i=>'Line '+(i+1)).join(' + ');
   return Object.assign({},cur,{
     risk:cur.risk||rec.risk, a:rec.a,
-    title:`🔑 Temp-lock ${names} (${keys} keys this roll) + ${cur.title}`,
+    title:`🔑 Temp-lock ${names} + ${cur.title}`,
     body:`Temp-lock ${names}, then: ${cur.body||''}<span class="muted"> Reapply the temp lock each roll with "load previous lock settings".</span>`,
-    cost:`${cur.cost?cur.cost+' · ':''}+ ${keys} keys per roll`});
+    cost:`${cur.cost?cur.cost+' · ':''}+ ${keys} temp locks per roll`});
 }
 // A line counts as SECURED (for display) only when it will survive: locked, temp-held by the
 // next step, or on a piece whose next step does not reroll it. An unlocked at-goal line that
@@ -1147,7 +1149,8 @@ self.onmessage=ev=>{ const {id,spec}=ev.data; try{ const t0=Date.now(); const r=
 const Exact=(function(){
   let worker=null; const tables=new Map(); const pending=new Map(); const waiters=[];
   function getWorker(){ if(worker) return worker; try{ worker=new Worker(URL.createObjectURL(new Blob([SOLVER_SRC],{type:'text/javascript'}))); }catch(e){ return null; }
-    worker.onmessage=ev=>{ const r=ev.data; const p=pending.get(r.id); pending.delete(r.id); if(r.ok){ tables.set(r.id,{V:r.V,Q:r.Q,idx3:r.idx3,L:r.L,cls:r.cls,spec:p&&p.spec}); } waiters.splice(0).forEach(f=>{ try{ f(r.id); }catch(e){} }); };
+    // listeners stay registered: every finished table triggers a re-render, since one render can request several tables
+    worker.onmessage=ev=>{ const r=ev.data; const p=pending.get(r.id); pending.delete(r.id); if(r.ok){ tables.set(r.id,{V:r.V,Q:r.Q,idx3:r.idx3,L:r.L,cls:r.cls,spec:p&&p.spec}); } waiters.slice().forEach(f=>{ try{ f(r.id); }catch(e){} }); };
     return worker; }
   // a solver spec from explicit target keys; minSlots < keys.length means "any minSlots of these"
   function specFromKeys(d,minSlots){
@@ -1178,7 +1181,8 @@ const Exact=(function(){
   function status(piece){ const sp=specFor(piece); if(!sp) return 'none'; if(tables.has(sp.key)) return 'ready'; ensure(piece); return pending.has(sp.key)?'pending':'none'; }
   // Q per action for `lines` of `piece` (Infinity = not available) and the best action, or null
   function qvalues(piece,lines){ const tbl=ensure(piece); if(!tbl||!tbl.Q) return null; const s=stateIndex(tbl,piece,lines); if(s<0) return null; const Q=Array.from(tbl.Q.subarray(s*9,s*9+9)); let best=-1; for(let a=0;a<9;a++) if(isFinite(Q[a])&&(best<0||Q[a]<Q[best])) best=a; if(best<0) return null; return {Q,best}; }
-  return {value,valueFor,ensure,onReady,status,qvalues};
+  function busy(){ return pending.size>0; }   // a table is still computing: show a placeholder, never a number that will change
+  return {value,valueFor,ensure,onReady,status,qvalues,busy};
 })();
 
 /* ===== SOLVER-CHOSEN STEPS =====
@@ -1348,22 +1352,30 @@ function renderAdvice(){
   const strip=document.getElementById('costStrip');
   if(strip){
     const mine=rec.risk!=='done'?pieceCostStat(state.active):null;
-    const kU=s=>(state.tempLocks&&s.keys)?` · ${Math.round(s.keys)} keys`:'';
+    const kU=s=>(state.tempLocks&&s.keys)?` · ${Math.round(s.keys)} temp locks`:'';
     const exactV=rec.risk!=='done'?Exact.value(state.active,state.pieces[state.active]):null;
-    if(exactV!==null){ evPill=`<span class="pill" title="Exact expected modules to finish this piece (keys, if any, are estimated)">~${Math.round(exactV)} modules to finish ${state.active} · exact</span>`; whyItems.push(`<span>Finishing ${state.active}: about ${Math.round(exactV)} modules under exact play. Luck swings hard.</span>`); }
+    if(exactV!==null){ evPill=`<span class="pill" title="Exact expected modules to finish this piece (temp locks, if any, are estimated)">~${Math.round(exactV)} modules to finish ${state.active} · exact</span>`; whyItems.push(`<span>Finishing ${state.active}: about ${Math.round(exactV)} modules under exact play. Luck swings hard.</span>`); }
+    else if(mine&&Exact.busy()){ evPill=`<span class="pill">working out the exact cost…</span>`; }
     else if(mine){ evPill=`<span class="pill" title="Expected modules to finish this piece">~${Math.round(mine.ev)} ±${Math.round(mine.sd)} modules to finish ${state.active}</span>`; whyItems.push(`<span>Finishing ${state.active}: about ${Math.round(mine.ev)} modules. Simulated average; luck swings hard.</span>`); }
-    let tot=0, var2=0, keys=0, any=false;
-    PIECES.forEach(p=>{ if(recommend(p).risk==='done') return; const s=pieceCostStat(p); if(s){ tot+=s.ev; var2+=s.sd*s.sd; keys+=s.keys||0; any=true; } });
-    if(mine||any){
+    let tot=0, var2=0, keys=0, any=false, spreadOk=true;
+    // exact modules per piece when its table exists (same source as the pill); the simulator supplies the spread and temp locks.
+    // "Any N of these" pieces have no simulator figure, so they show the exact count alone.
+    PIECES.forEach(p=>{ if(recommend(p).risk==='done') return; const s=pieceCostStat(p); const ex=Exact.value(p,state.pieces[p]);
+      if(ex!==null){ tot+=ex; any=true; if(s){ var2+=s.sd*s.sd; keys+=s.keys||0; } else spreadOk=false; }
+      else if(s){ tot+=s.ev; var2+=s.sd*s.sd; keys+=s.keys||0; any=true; } });
+    const haveMine=mine||exactV!==null;
+    if(haveMine||any||(Exact.busy()&&rec.risk!=='done')){
       strip.style.display='flex';
       document.getElementById('statLeftLabel').textContent=state.active;
-      document.getElementById('statLeft').innerHTML=mine?`~${Math.round(mine.ev)}<span class="unit">±${Math.round(mine.sd)}${kU(mine)}</span>`:'done';
-      document.getElementById('statAll').innerHTML=any?`~${Math.round(tot)}<span class="unit">±${Math.round(Math.sqrt(var2))}${(state.tempLocks&&keys)?` · ${Math.round(keys)} keys`:''}</span>`:'done';
+      const busy=Exact.busy();   // tables still computing: placeholder instead of a simulated number that would change in a moment
+      document.getElementById('statLeft').innerHTML=busy?'<span class="muted">…</span>':(haveMine?`~${Math.round(exactV!==null?exactV:mine.ev)}${mine?`<span class="unit">±${Math.round(mine.sd)}${kU(mine)}</span>`:''}`:'done');
+      document.getElementById('statAll').innerHTML=busy?'<span class="muted">…</span>':(any?`~${Math.round(tot)}${spreadOk?`<span class="unit">±${Math.round(Math.sqrt(var2))}${(state.tempLocks&&keys)?` · ${Math.round(keys)} temp locks`:''}</span>`:''}`:'done');
     } else strip.style.display='none';
   }
-  const step=h(`<div class="step ${rec.risk}"><h3>${rec.title}</h3>${cleanBody?`<div style="font-size:13.5px">${cleanBody}</div>`:''}${riskLine}${securedLine}${(rec.cost||evPill)?`<div style="margin-top:8px">${rec.cost?`<span class="pill">${rec.cost}</span><span class="pill">${riskLabel(rec.risk)}</span>`:''}${rec.exact==='ok'?'<span class="pill" title="Checked against the exact solver">✓ exact</span>':(rec.exact==='pending'?'<span class="pill">checking exactly…</span>':'')}${evPill}</div>`:''}</div>`);
+  // while the exact table is still computing (well under a second): a placeholder, never a move that could change
+  const step=rec.exact==='pending'?h(`<div class="step pending"><h3>Working out the exact move…</h3></div>`):h(`<div class="step ${rec.risk}"><h3>${rec.title}</h3>${cleanBody?`<div style="font-size:13.5px">${cleanBody}</div>`:''}${riskLine}${securedLine}${(rec.cost||evPill)?`<div style="margin-top:8px">${rec.cost?`<span class="pill">${rec.cost}</span><span class="pill">${riskLabel(rec.risk)}</span>`:''}${rec.exact==='ok'?'<span class="pill" title="Checked against the exact solver">✓ exact</span>':(rec.exact==='pending'?'<span class="pill">checking exactly…</span>':'')}${evPill}</div>`:''}</div>`);
   adv.appendChild(step);
-  if(whyItems.length)
+  if(whyItems.length && rec.exact!=='pending')
     adv.appendChild(h(`<details class="why"><summary>Why &amp; alternatives</summary><div class="wb">${whyItems.map(w=>`<div>${w}</div>`).join('')}</div></details>`));
   const a=rec.a;
   document.getElementById('pieceMeta').textContent = a?`${a.lockedCount} locked · ${securedCount(state.active)} / ${a.N} secured`:'';
@@ -1450,8 +1462,8 @@ function renderGoalUI(){
   if(sw){
     sw.checked=!!state.tempLocks;
     const hintTxt=state.tempLocks
-      ?'Temp locks hold lines you will free again (a target landed below its value). Finished lines still get a module lock, which is cheaper than keys over many rolls. Each step shows the keys it burns per roll.'
-      :'Lock steps use Custom Modules. Turn this on if you have temp lock keys to spend.';
+      ?'Temp locks hold lines you will free again (a target landed below its value). Finished lines still get a module lock, which is cheaper than temp locks over many rolls. Each step shows the temp locks it burns per roll.'
+      :'Lock steps use Custom Modules. Turn this on if you have temp locks to spend.';
     document.getElementById('tempHint').textContent=hintTxt; sw.closest('.lockmode').title=hintTxt;
     if(!sw._wired){ sw._wired=true; sw.onchange=()=>{ state.tempLocks=sw.checked; save(); renderAll(); }; }
   }
