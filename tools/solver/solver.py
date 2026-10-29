@@ -60,12 +60,15 @@ def classes_for(goal):
 
 
 class Model:
-    def __init__(self, targets, slots, name='', temp_locks=False):
+    def __init__(self, targets, slots, name='', temp_locks=False, min_slots=None):
         """targets: list of (effectName, goalTier); slots: list of lists of target indices.
         temp_locks: a PROVISIONAL lock (line below its goal) costs 0 rocks (keys instead);
-        a FINAL lock (line at goal) still costs rocks."""
+        a FINAL lock (line at goal) still costs rocks.
+        min_slots: the piece is done once this many slots are satisfied ("any N of these");
+        default = all of them. Mirrors `minSlots` in solver_worker.js."""
         self.name = name
         self.temp_locks = temp_locks
+        self.min_slots = len(slots) if min_slots is None else max(1, min(len(slots), min_slots))
         self.T = [(n, EFF_P[n], g) for n, g in targets]
         self.nT = len(self.T)
         self.slots = slots
@@ -103,13 +106,12 @@ class Model:
         return int(self.idx3[(a * L + b) * L + c])
 
     def is_done(self, tri):
+        sat = 0
         for slot in self.slots:
-            ok = False
             for x in tri:
                 cd = self.codes[x]
-                if cd['kind'] == 2 and cd['tgt'] in slot and cd['meets']: ok = True; break
-            if not ok: return False
-        return True
+                if cd['kind'] == 2 and cd['tgt'] in slot and cd['meets']: sat += 1; break
+        return sat >= self.min_slots
 
     def _build_arrays(self):
         nS, L = self.nS, self.L
@@ -247,7 +249,7 @@ class Model:
 
     def export(self, path, tol_tie=0.25):
         out = dict(name=self.name, targets=[dict(effect=n, goal=g) for n, _, g in self.T],
-                   slots=self.slots, junk=self.junk_names, actions=ACT_NAMES, states=[])
+                   slots=self.slots, minSlots=self.min_slots, junk=self.junk_names, actions=ACT_NAMES, states=[])
         for s, tri in enumerate(self.states):
             q = self.Q[s]
             best = [ACT_NAMES[a] for a in range(len(ACT_NAMES)) if np.isfinite(q[a]) and q[a] <= self.V[s] + tol_tie]
@@ -358,6 +360,10 @@ SCENARIOS = {
     # the user's example: third line may be any of three effects (values don't matter for them)
     'flex3':    ([('Elemental Damage', 8), ('ATK', 8), ('Critical Rate', 1), ('Critical Damage', 1), ('Max Ammo', 7)],
                  [[0], [1], [2, 3, 4]]),
+    # "any N of these": a third element gives min_slots (the by-gear page with fewer lines wanted than targets)
+    'any2of3':  ([('Elemental Damage', 8), ('ATK', 8), ('Max Ammo', 7)], [[0], [1], [2]], 2),
+    'any1of3':  ([('Elemental Damage', 8), ('ATK', 8), ('Max Ammo', 7)], [[0], [1], [2]], 1),
+    'any2of3blue': ([('Elemental Damage', 12), ('ATK', 12), ('Max Ammo', 12)], [[0], [1], [2]], 2),
 }
 
 if __name__ == '__main__':
@@ -366,9 +372,11 @@ if __name__ == '__main__':
     temp = '--temp' in args
     names = [a for a in args if not a.startswith('--')]
     for nm in names:
-        targets, slots = SCENARIOS[nm]
+        sc = SCENARIOS[nm]
+        targets, slots = sc[0], sc[1]
+        min_slots = sc[2] if len(sc) > 2 else None
         t0 = time.time()
-        m = Model(targets, slots, nm, temp_locks=temp)
+        m = Model(targets, slots, nm, temp_locks=temp, min_slots=min_slots)
         print(f'[{nm}{" temp" if temp else ""}] states={m.nS} contexts={m.nctx} change-outcomes={len(m.ch_states)} reset-outcomes={len(m.rs_states)} build {time.time()-t0:.1f}s', flush=True)
         m.solve(verbose=False)
         print(f'[{nm}{" temp" if temp else ""}] V(empty) = {m.V[m.sidx((0,0,0))]:.2f} rocks   total {time.time()-t0:.1f}s', flush=True)

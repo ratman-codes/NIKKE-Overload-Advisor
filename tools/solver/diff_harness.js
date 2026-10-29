@@ -20,7 +20,7 @@
       localStorage.removeItem('nikkeOL'); state=load();
       EFF_NAMES.forEach(e=>state.roles[e]='Off'); state.goalTierBy={}; state.tempLocks=false;
       data.targets.forEach(t=>{ state.roles[t.effect]='Target'; state.goalTierBy[t.effect]=t.goal; });
-      state.N=data.targets.length;
+      state.N=data.minSlots||data.targets.length;   // "any N of these" tables carry minSlots
     }else{
       localStorage.removeItem('nikkeOL2'); state=load();
       state.req={}; state.goalTierBy={}; state.tempLocks=/_temp$/.test(name);
