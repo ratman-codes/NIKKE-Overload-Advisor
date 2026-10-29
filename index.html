@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NIKKE Overload Reroll Advisor</title>
 <style>
-  :root{ --bg:#0e1117; --panel:#161b22; --line:#2a323d; --text:#e6edf3; --muted:#9aa7b4; --accent:#4aa3ff; --accent2:#7c5cff; }
+  :root{ --bg:#0e1117; --panel:#161b22; --line:#2a323d; --text:#e6edf3; --muted:#9aa7b4; --accent:#4aa3ff; --accentfill:#1d6fd6; --accent2:#7c5cff; }
   *{box-sizing:border-box}
   html,body{height:100%}
   body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,Segoe UI,Roboto,sans-serif;display:flex;flex-direction:column}
@@ -13,7 +13,7 @@
   .brand{font-weight:700;margin-right:8px}
   .ttab{padding:7px 18px;border-radius:8px;border:1px solid var(--line);background:#1c232d;cursor:pointer;font-weight:600;user-select:none}
   .ttab:hover{border-color:var(--accent)}
-  .ttab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .ttab.active{background:var(--accentfill);border-color:var(--accentfill);color:#fff}
   .treset{padding:7px 14px;border-radius:8px;border:1px solid #5a1f1c;background:#1c232d;color:#ff8a80;cursor:pointer;font-weight:600;font-size:13px;margin-left:6px}
   .treset:hover{border-color:#ff8a80}
   .hint{color:var(--muted);font-size:12.5px;margin-left:auto}
@@ -37,8 +37,8 @@
   // (Simple: nikkeOL, Advanced: nikkeOL2). Last-used tab is remembered.
   const KEY='nikkeOLtabChoice';
   const hints={
-    simple:'Per-piece chart advisor — pick a Category per piece, follow the flowchart.',
-    adv:'Whole-unit planner — set ×counts like Ele ×4 · ATK ×4 · Ammo ×2 and get one next move across all four pieces.'
+    simple:'Pick the effects you want on one piece, then follow the roll advice.',
+    adv:'Pick the effects you want on all four pieces, then follow the roll advice.'
   };
   function sel(which){
     document.getElementById('tabSimple').classList.toggle('active',which==='simple');
