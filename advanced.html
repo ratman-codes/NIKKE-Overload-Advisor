@@ -29,7 +29,7 @@
   /* 2x2 piece grid in the game's order: Head | Body over Arm | Leg, beside the line editors */
   .side{display:grid;grid-template-columns:clamp(200px,28%,260px) 1fr;gap:14px;align-items:start}
   .pgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-  .ptile{position:relative;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;min-height:58px}
+  .ptile{position:relative;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;min-height:52px}
   .ptile:hover{border-color:var(--accent)}
   .ptile.active{background:var(--accent);border-color:var(--accent);color:#fff}
   .ptile.active .muted{color:#dbeaff}
@@ -68,7 +68,8 @@
   .step .why{color:var(--muted);font-size:13.5px;margin-top:8px}
   .pill{display:inline-block;font-size:12px;padding:2px 9px;border-radius:20px;border:1px solid var(--line);background:#12161c;margin-right:6px}
   .lines{display:grid;gap:8px;margin-top:6px}
-  .linerow{display:grid;grid-template-columns:52px 1fr 150px auto;gap:8px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 9px}
+  .linerow{display:grid;grid-template-columns:52px 1fr 150px auto;gap:8px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:5px 9px}
+  .linerow select{padding:4px 6px}
   .linerow .ln{font-weight:700;color:var(--muted);font-size:13px}
   .progress{height:8px;background:#22262d;border-radius:6px;overflow:hidden;margin:8px 0 4px}
   .progress > i{display:block;height:100%;background:var(--green)}
@@ -99,7 +100,9 @@
   /* "wrong piece" notice: a quiet row with one clear button, same shape as the other panels */
   .switchbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:8px 10px 8px 14px;margin-bottom:10px;font-size:14px}
   .switchbar .txt{min-width:0}
-  .ptag{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:20px;border:1px solid var(--line);background:#12161c;color:var(--muted);margin-bottom:6px}
+  .ptag{display:inline-block;font-size:12px;font-weight:600;padding:1px 9px;border-radius:20px;border:1px solid var(--line);background:#12161c;color:var(--muted);vertical-align:middle;margin-left:6px}
+  .step{padding:11px 14px}
+  .coststrip{margin-top:8px}
   .statrow{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .stat{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 16px;flex:1;min-width:160px}
   .slabel{font-size:12px;color:var(--muted)}
@@ -118,8 +121,9 @@
   .tierrow select{flex:1;min-width:0;padding:3px 6px;font-size:12.5px}
   .tierrow.off{opacity:.65}
   /* 12-line budget UI */
-  .budget{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px}
-  .bignum{font-size:30px;font-weight:700;line-height:1}
+  .budget{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:4px}
+  .presetsel{font-size:12.5px;padding:5px 8px;margin-left:auto}
+  .bignum{font-size:26px;font-weight:700;line-height:1}
   .bignum small{font-size:14px;color:var(--muted);font-weight:500}
   .bar{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;flex:1;min-width:260px;height:22px}
   .seg{border-radius:4px;background:#22262d;border:1px solid var(--line);position:relative}
@@ -129,7 +133,9 @@
   .presets{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 12px}
   .presets button{font-size:12.5px;padding:5px 10px}
   .reqtbl{width:100%;border-collapse:collapse;font-size:14px}
-  .reqtbl td{border:none;border-top:1px solid var(--line);padding:7px 6px;text-align:left;vertical-align:middle}
+  .reqtbl td{border:none;border-top:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:middle}
+  .reqtbl .sharecell{display:flex;align-items:center;gap:8px;white-space:nowrap}
+  .reqtbl .sharecell .share{width:80px;min-width:0;flex:none}
   .reqtbl tr:first-child td{border-top:none}
   .reqtbl .name{font-weight:600;white-space:nowrap}
   .stepper{display:inline-flex;align-items:center;gap:6px}
@@ -140,14 +146,46 @@
   .share i{display:block;height:100%}
   .rm{color:var(--red);background:none;border:none;font-size:16px;padding:0 4px;cursor:pointer}
   .addrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;margin-top:10px}
+  .addbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;margin-top:6px;padding:8px 6px;border-top:1px dashed var(--line)}
+  .addbar .btn-quiet{font-size:13px;font-weight:600;color:var(--accent)}
+  .addbar .btn-quiet:hover{color:#fff;background:var(--accent);border-color:var(--accent)}
+  .addbar .btn-quiet.on{color:#fff;background:var(--accent);border-color:var(--accent)}
+  .addbar #addPanel{flex-basis:100%}
+  .pickstrip{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px 10px;background:var(--panel2);border:1px solid var(--line);border-radius:8px}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:5px 10px;border-radius:20px;background:#12161c;border:1px solid var(--line);color:var(--text)}
+  .chip:hover{border-color:var(--accent)}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .reqtbl .passrow td{color:var(--muted)}
+  .reqtbl .grp{font-size:11px;font-weight:700;color:var(--accent2);margin-left:6px}
   .full{color:#e0a94a}
   #buildSummary{display:none}   /* header chips + the section-3 strip already carry this */
-  .lockmode{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-2px 0 12px}
-  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-  .seg button{border:none;border-radius:0;padding:8px 14px;font-size:13.5px;font-weight:600;background:var(--panel2);color:var(--muted)}
-  .seg button+button{border-left:1px solid var(--line)}
-  .seg button:hover{color:var(--text)}
-  .seg button.active{background:var(--accent);color:#fff}
+  /* temp-lock availability switch: the one setting that changes every lock step */
+  .h2row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+  .h2row h2{margin:0}
+  .h2row .unitprog{margin:0 0 0 auto}
+  .lockmode{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--panel2);border:1px solid var(--orange);border-radius:24px;padding:6px 14px 6px 8px}
+  .lockmode:has(input:checked){border-color:var(--green);box-shadow:0 0 0 3px rgba(46,160,67,.18)}
+  .lockmode .switch{font-size:14.5px}
+  .lockmode .hint{display:none}
+  .switch{display:inline-flex;align-items:center;gap:10px;cursor:pointer;font-weight:700;font-size:15px}
+  .switch input{position:absolute;opacity:0;width:0;height:0}
+  .switch .track{width:44px;height:24px;border-radius:12px;background:#3a4452;position:relative;transition:background .15s;flex:none}
+  .switch .track::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .15s}
+  .switch input:checked + .track{background:var(--green)}
+  .switch input:checked + .track::after{left:23px}
+  .lockmode .hint{color:var(--muted);font-size:13px;flex:1;min-width:200px}
+  /* line rows: colour says the state */
+  .linerow.done{border-left:4px solid var(--green);background:linear-gradient(90deg,var(--greenbg),var(--panel2) 45%)}
+  .linerow.low{border-left:4px solid var(--orange)}
+  .linerow.held .ln{color:#69b7ff}
+  .ptile.done{border-color:#2f7a44}
+  .ptile.done .name::after{content:" ✓";color:#5fd67a}
+  .ptile.active.done .name::after{color:#fff}
+  .unitprog{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);margin:-2px 0 10px}
+  .unitprog .bar2{flex:1;max-width:260px;height:8px;border-radius:5px;background:#22262d;overflow:hidden}
+  .unitprog .bar2 i{display:block;height:100%;background:var(--green)}
+  .riskline{margin-top:8px;color:#ff8a80;font-size:13px;font-weight:600}
+  .secured{margin-top:6px;font-size:13px;color:#5fd67a}
   @media (max-width:680px){ .reqtbl .share{min-width:70px} }
   /* declutter layout */
   .warnline{display:flex;gap:6px;align-items:baseline;border:1px solid #4a3714;background:linear-gradient(90deg,var(--orangebg),var(--panel) 60%);border-radius:10px;padding:8px 13px;font-size:13px;margin-bottom:18px}
@@ -157,8 +195,10 @@
   .cs-val .unit{font-size:11.5px;color:var(--muted);font-weight:500;margin-left:3px}
   .linerow{grid-template-columns:52px minmax(140px,1.2fr) 150px 78px 1fr}
   .lbadges{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
-  .why{margin-top:9px;font-size:13px}
-  .why summary{color:var(--accent);font-weight:600}
+  .why{margin:4px 0 0;font-size:13px}
+  .why summary{color:var(--accent);font-weight:600;padding:4px 0}
+  #advice:has(.why) + *, #advice{margin-bottom:0}
+  .card:has(#advice){padding-bottom:10px}
   .why .wb{display:grid;gap:7px;margin-top:8px;color:var(--muted)}
   @media (max-width:680px){ .linerow{grid-template-columns:44px 1fr 1fr 70px} .lbadges{grid-column:1/-1;justify-content:flex-start} }
 </style>
@@ -181,28 +221,31 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
         <span id="reqChips" style="margin-left:10px"></span>
         <span class="muted" style="font-size:12px;margin-left:8px">(click to edit)</span>
       </summary>
-      <div class="budget" style="margin-top:12px">
+      <div class="budget" style="margin-top:10px">
         <div class="bignum"><span id="budgetUsed">0</span><small> / 12 lines</small></div>
         <div class="bar" id="budgetBar"></div>
-        <div class="legend" id="budgetLegend"></div>
-      </div>
-      <div class="muted" id="budgetFree" style="font-size:13px;margin:-4px 0 8px"></div>
-      <div class="presets" id="presets">
-        <span class="muted" style="font-size:12.5px;align-self:center">Presets:</span>
-        <button data-preset="10">10/12 · Ele 4 · ATK 4 · Ammo 2</button>
-        <button data-preset="11">11/12 · Ele 4 · ATK 4 · Ammo 3</button>
-        <button data-preset="12">12/12 · Ele 4 · ATK 4 · Ammo 4</button>
-        <button data-preset="8">8/12 · Ele 4 · ATK 4</button>
-        <button data-preset="0">Clear</button>
+        <span class="muted" id="budgetFree" style="font-size:12.5px"></span>
+        <select id="presets" class="presetsel" title="Load a standard build">
+          <option value="">Presets…</option>
+          <option value="10">10/12 · Ele 4 · ATK 4 · Ammo 2</option>
+          <option value="11">11/12 · Ele 4 · ATK 4 · Ammo 3</option>
+          <option value="12">12/12 · Ele 4 · ATK 4 · Ammo 4</option>
+          <option value="8">8/12 · Ele 4 · ATK 4</option>
+          <option value="0">Clear all</option>
+        </select>
       </div>
       <table class="reqtbl" id="reqRows"></table>
-      <div class="addrow">
-        <span class="muted">Add effect:</span> <select id="addSel"></select>
-        <span class="muted">·&nbsp; Passable (bonus only, uses no lines):</span> <select id="passSel"></select> <span id="passChips"></span>
+      <div class="addbar">
+        <button class="btn-quiet" id="addEffBtn">＋ Add effect</button>
+        <button class="btn-quiet" id="addAnyBtn" title="One line that any of several effects can fill, for example Crit Rate or Crit Damage">＋ Any of…</button>
+        <button class="btn-quiet" id="addPassBtn" title="Bonus only: kept if it lands, never fished for, uses no lines">＋ Passable bonus</button>
+        <span style="margin-left:auto;display:inline-flex;gap:6px;align-items:center">
+          <label for="valGoal" class="muted" title="Fills every row's min value. You can also set each row yourself. Prydwen's table is in Reference.">Value targets ⓘ</label>
+          <select id="valGoal"><option value="prydwen">Prydwen minimums</option><option value="blue">Blue+ (Tier 12+)</option><option value="black">Black (Tier 15)</option><option value="custom">Custom (per effect)</option></select>
+        </span>
+        <span id="addPanel"></span>
       </div>
-      <div class="addrow" style="margin-top:8px">
-        <label for="valGoal" class="muted" title="A preset fills every row's min value. You can also set each row yourself. Prydwen's table is in Reference."><b>Value targets</b> ⓘ</label>
-        <select id="valGoal"><option value="prydwen">Prydwen minimums</option><option value="blue">Blue+ (Tier 12+)</option><option value="black">Black (Tier 15)</option><option value="custom">Custom (per effect)</option></select>
+      <div class="addrow" style="display:none">
       </div>
       <div id="buildSummary" style="margin-top:12px;font-size:14px"></div>
     </details>
@@ -210,42 +253,41 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
 
   <!-- ================= PIECES ================= -->
   <div class="card">
-    <h2>2 · Enter the gear pieces</h2>
-    <p class="muted" style="margin-top:-6px;font-size:12.5px">Enter all four pieces before spending anything. Tick <b>Lock</b> for lines you have locked in the game.</p>
+    <div class="h2row"><h2>2 · Enter the gear pieces</h2><span class="muted" style="font-size:12.5px" title="Enter all four pieces before spending anything, with Lock ticked for lines you have locked in the game.">All four pieces, locks ticked as in the game ⓘ</span><div class="unitprog" id="unitProg" style="display:none"><span class="bar2"><i id="unitProgBar"></i></span><span id="unitProgText"></span></div></div>
     <div class="side">
-      <div class="pgrid" id="pieceTabs"></div>
+      <div>
+        <div class="pgrid" id="pieceTabs"></div>
+        <button id="clearPiece" class="btn-quiet" style="margin-top:8px;width:100%">Clear this piece</button>
+      </div>
       <div>
         <div class="lines" id="lineEditors" style="margin-top:0"></div>
-        <div class="row" style="margin-top:10px">
-          <span class="muted" id="pieceMeta" style="font-size:13px"></span>
-          <button id="clearPiece" class="btn-quiet" style="margin-left:auto">Clear this piece</button>
+        <div class="row" style="margin-top:8px;gap:4px 14px">
+          <span class="muted" id="pieceMeta" style="font-size:12.5px"></span>
+          <span class="muted" id="activeAdvice" style="font-size:12.5px;flex-basis:100%"></span>
         </div>
-        <div class="muted" id="activeAdvice" style="font-size:13px;margin-top:6px"></div>
       </div>
     </div>
   </div>
 
   <!-- ================= ADVICE ================= -->
   <div class="card">
-    <h2>3 · Next move</h2>
-    <div class="lockmode" id="lockMode">
-      <span class="muted">Locks:</span>
-      <span class="seg">
-        <button data-mode="perm" title="Lock steps use Custom Modules">🔒 Permanent (modules)</button>
-        <button data-mode="temp" title="Lock steps use temp lock keys instead of modules. Estimates show modules and keys.">🔑 Temp locks (keys)</button>
-      </span>
+    <div class="h2row"><h2>3 · Next move</h2>
+      <div class="lockmode" id="lockMode">
+        <label class="switch"><input type="checkbox" id="tempSwitch"><span class="track"></span><span>🔑 Temp locks available</span></label>
+        <span class="hint" id="tempHint"></span>
+      </div>
     </div>
-    <div id="advice"></div>
-    <div id="costStrip" class="coststrip" style="display:none" title="Expected Custom Modules. Simulated averages; luck swings hard.">
+    <div id="costStrip" class="coststrip" style="display:none;margin:0 0 12px" title="Expected Custom Modules. Simulated averages; luck swings hard.">
       <span class="cs-item"><span class="muted">Modules left</span> <b class="cs-val" id="statLeft">—</b></span>
       <span class="cs-item"><span class="muted">Full build</span> <b class="cs-val" id="statFull">—</b></span>
       <span class="cs-item" style="flex:1;min-width:170px;display:flex;align-items:center;gap:8px"><span class="meter" style="flex:1;margin-top:0"><i id="costMeter" style="width:0%"></i></span><span class="muted" id="costPct" style="font-size:12px;white-space:nowrap"></span></span>
     </div>
+    <div id="advice"></div>
   </div>
 
   <!-- ================= TOTALS ================= -->
   <div class="card">
-    <details id="totalsFold">
+    <details id="totalsFold" open>
       <summary class="reqsum"><h2 style="display:inline;margin:0">4 · Unit totals</h2> <span id="totalsDigest" class="muted" style="font-size:12.5px;margin-left:8px"></span></summary>
       <p class="muted" style="margin-top:10px;font-size:13px">All rolled effects summed across the four pieces. A roll at or above its minimum counts as <b>1×</b>, below it as <b>0.5×</b> (Charge Damage, Crit and DEF always count 1×). Useful for stacked targets like 120% total Max Ammo.</p>
       <div id="totals"></div>
@@ -400,6 +442,7 @@ const EFF_NAMES = Object.keys(EFFECTS);
 const PIECES = ['Head','Arm','Body','Leg'];
 
 function minTier(eff){
+  if(typeof eff==='string' && eff.startsWith('any:')) return Math.max(...eff.slice(4).split('|').map(minTier));
   const e=EFFECTS[eff]; if(e.min<=0) return 1;
   for(let t=1;t<=15;t++) if(e.vals[t-1]>=e.min) return t;
   return 15;
@@ -412,6 +455,7 @@ function tierWord(t){ return t>=15?'Black':(t>=12?'Blue':''); }
 const DEFAULT = {
   req:{},                // effect -> 1..4 (how many of the 4 pieces need it) | 'P' (passable bonus)
   goalTierBy:{},         // effect -> minimum acceptable tier chosen by the user (absent = Prydwen's minimum)
+  tempLocks:true,        // temp lock keys available (default: yes; a temp lock never costs modules)
   active:'Head',
   pieces:{}              // piece -> [{effect:'',tier:11,locked:false} x3]
 };
@@ -428,7 +472,23 @@ function load(){
 function save(){ localStorage.setItem('nikkeOL2', JSON.stringify(state)); }
 
 function reqOf(e){ const r=state.req[e]; return (typeof r==='number')?r:0; }
-function reqEffects(){ return EFF_NAMES.filter(e=>reqOf(e)>0); }
+/* ---- "ANY OF" GROUPS ------------------------------------------------------
+   A requirement can be a group: any one of several effects satisfies it
+   ("Crit Rate or Crit Damage ×2"). Stored in state.req under the key
+   'any:A|B' with a ×count like any effect. Everything downstream works on
+   requirement KEYS; keyOf(lineEffect) maps a rolled effect to the key it
+   satisfies (itself, or its group). A member effect cannot also be its own
+   requirement. */
+const GROUP_PREFIX='any:';
+function isGroup(k){ return typeof k==='string' && k.startsWith(GROUP_PREFIX); }
+function groupMembers(k){ return isGroup(k)?k.slice(GROUP_PREFIX.length).split('|'):[k]; }
+function groupKey(members){ return GROUP_PREFIX+members.slice().sort((a,b)=>EFF_NAMES.indexOf(a)-EFF_NAMES.indexOf(b)).join('|'); }
+function reqGroups(){ return Object.keys(state.req).filter(k=>isGroup(k)&&reqOf(k)>0); }
+function reqEffects(){ return EFF_NAMES.filter(e=>reqOf(e)>0).concat(reqGroups()); }
+function keyOf(effect){ if(!effect||reqOf(effect)>0) return effect; const g=reqGroups().find(k=>groupMembers(k).includes(effect)); return g||effect; }
+function dispKey(k){ return isGroup(k)?groupMembers(k).map(e=>EFF_ABBR[e]||e).join(' or '):(EFF_ABBR[k]||k); }
+function dispKeyLong(k){ return isGroup(k)?groupMembers(k).join(' or '):k; }
+function colorOf(k){ return EFF_COLOR[k]||EFF_COLOR[groupMembers(k)[0]]||'#9aa7b4'; }
 function passableSet(){ return EFF_NAMES.filter(e=>state.req[e]==='P'); }
 function totalReqLines(){ return reqEffects().reduce((s,e)=>s+reqOf(e),0); }
 
@@ -440,8 +500,9 @@ function totalReqLines(){ return reqEffects().reduce((s,e)=>s+reqOf(e),0); }
    per-effect override. */
 // The user picks each effect's minimum acceptable tier (Prydwen's minimum by default;
 // Blue+/Black presets fill them in). Everything downstream reads goalTier().
-function goalTier(e){ const t=state.goalTierBy&&state.goalTierBy[e]; return (t>=1&&t<=15)?t:minTier(e); }
-function goalVal(e){ return EFFECTS[e].vals[goalTier(e)-1]; }
+// A group has one minimum tier for all its members (stored under the group key).
+function goalTier(e){ const k=isGroup(e)?e:keyOf(e); const t=state.goalTierBy&&state.goalTierBy[k]; return (t>=1&&t<=15)?t:minTier(k); }
+function goalVal(e){ const m=isGroup(e)?groupMembers(e)[0]:e; return EFFECTS[m].vals[goalTier(e)-1]; }
 function goalKind(e){ const g=goalTier(e); return g===minTier(e)?'min':(g>=15?'black':(g>=12?'blue':'custom')); }
 function goalLabel(e){ const g=goalTier(e); return `Tier ${g}+ (${goalVal(e)}%${g>=15?', Black':(g>=12?', Blue':'')})`; }
 const BIN_P=t=>t<=5?0.12:(t<=10?0.07:0.01);
@@ -484,7 +545,7 @@ function unitAnalysis(){
   reqEffects().forEach(e=>{
     const req=reqOf(e);
     const cand=[];
-    PIECES.forEach(p=>cls[p].forEach(l=>{ if(!l.empty&&l.effect===e&&(l.locked||l.meets)) cand.push({piece:p,val:l.val,locked:l.locked,meets:l.meets}); }));
+    PIECES.forEach(p=>cls[p].forEach(l=>{ if(!l.empty&&keyOf(l.effect)===e&&(l.locked||l.meets)) cand.push({piece:p,val:l.val,locked:l.locked,meets:l.meets}); }));
     const locked=cand.filter(c=>c.locked);
     const free=cand.filter(c=>!c.locked).sort((a,b)=>b.val-a.val);
     const keep=[...locked];
@@ -511,14 +572,14 @@ function unitAnalysis(){
    piece — those pieces are true Cat-3 and are NEVER called finished at 2. */
 function buildPlan(){
   const ua=unitAnalysis();
-  const secOn=(p,e)=>ua.cls[p].some(l=>!l.empty&&l.effect===e&&(l.meets||l.locked));
+  const secOn=(p,e)=>ua.cls[p].some(l=>!l.empty&&keyOf(l.effect)===e&&(l.meets||l.locked));
   const baseMust={};
   PIECES.forEach(p=>{
     baseMust[p]=reqEffects().filter(e=>{
       if(ua.keepers[e].has(p)) return true;
       if(ua.remaining[e]<=0) return false;
       const openIncl=PIECES.filter(q=>!ua.keepers[e].has(q)).length;
-      const landed23=ua.cls[p].some(l=>!l.empty&&l.effect===e&&l.i>=1);
+      const landed23=ua.cls[p].some(l=>!l.empty&&keyOf(l.effect)===e&&l.i>=1);
       return ua.remaining[e]>=openIncl || landed23;
     });
   });
@@ -544,9 +605,9 @@ function buildPlan(){
         return pieceCostForTargets(q,baseMust[q].concat([e]),cls)-pieceCostForTargets(q,baseMust[q],cls);
       }
       let locks=lockCountOf(q), pre=0;
-      cls.forEach(l=>{ if(!l.empty&&!l.locked&&l.meets&&baseMust[q].includes(l.effect)){ pre+=lockCost(locks); locks++; } });
+      cls.forEach(l=>{ if(!l.empty&&!l.locked&&l.meets&&baseMust[q].includes(keyOf(l.effect))){ pre+=lockCost(locks); locks++; } });
       const excluded=cls.filter(l=>!l.empty).map(l=>l.effect);
-      const free=cls.filter(l=>l.locked?false:!(!l.empty&&l.meets&&baseMust[q].includes(l.effect))).map(l=>l.i);
+      const free=cls.filter(l=>l.locked?false:!(!l.empty&&l.meets&&baseMust[q].includes(keyOf(l.effect)))).map(l=>l.i);
       return pre+evFinish(free,[e],locks,excluded);
     };
     const closed=selfSuff.sort((x,y)=>carryEV(y)-carryEV(x)||PIECES.indexOf(x)-PIECES.indexOf(y)).slice(0,budget);
@@ -557,7 +618,7 @@ function buildPlan(){
     }
   });
   const sets={};
-  const order=x=>EFF_NAMES.indexOf(x);
+  const order=x=>isGroup(x)?50+EFF_NAMES.indexOf(groupMembers(x)[0]):EFF_NAMES.indexOf(x);
   PIECES.forEach(p=>{
     const mustAll=[...new Set([...baseMust[p],...extraForced[p]])].sort((a,b)=>order(a)-order(b));
     const must=mustAll.slice(0,3);
@@ -578,7 +639,7 @@ function buildPlan(){
     const claimed=cands.filter(q=>{
       const securedOthers=baseMust[q].filter(f=>f!==e).every(f=>secOn(q,f));
       const l1=ua.cls[q][0];
-      const l1Claim=l1.locked && !l1.empty && baseMust[q].includes(l1.effect);
+      const l1Claim=l1.locked && !l1.empty && baseMust[q].includes(keyOf(l1.effect));
       return securedOthers || l1Claim;
     }).length;
     cat2Full[e]=claimed>=budget;
@@ -594,9 +655,9 @@ function analyze(piece){
   const optional=s.opt;
   const N=Math.max(1,desired.length);
   const lines=ua.cls[piece];
-  const desiredLines=lines.filter(l=>!l.empty && desired.includes(l.effect));
+  const desiredLines=lines.filter(l=>!l.empty && desired.includes(keyOf(l.effect)));
   const goodLines=desiredLines.filter(l=>l.meets);
-  const distinctGood=new Set(goodLines.map(l=>l.effect));
+  const distinctGood=new Set(goodLines.map(l=>keyOf(l.effect)));
   const lockedCount=lines.filter(l=>l.locked).length;
   const missing=desired.filter(e=>!distinctGood.has(e));
   // open-quota effects this piece could still carry (NOT already among its musts —
@@ -625,9 +686,10 @@ function minHitP(e){
   return Math.min(1,pAtLeast(g)/0.88);
 }
 function effPool(excluded){
-  const rem=EFF_NAMES.filter(e=>!excluded.includes(e));
+  const ex=excluded.flatMap(groupMembers);
+  const rem=EFF_NAMES.filter(e=>!ex.includes(e));
   const tot=rem.reduce((s,e)=>s+EFF_P[e],0)||1;
-  return e=>(rem.includes(e)?EFF_P[e]/tot:0);
+  return k=>groupMembers(k).reduce((s,e)=>s+(rem.includes(e)?EFF_P[e]/tot:0),0);
 }
 // E[modules] to land every effect in `targets` on the free lines, locking after
 // each catch (except the last), starting from `locks` locked lines.
@@ -642,7 +704,7 @@ function evFinish(freeLines,targets,locks,excluded){
   hits.forEach(hh=>{
     const rest=targets.filter(x=>x!==hh.t);
     const fix=(1/minHitP(hh.t)-1)*rollC;
-    const cont=rest.length? lockCost(locks)+evFinish(freeLines.filter(x=>x!==hh.l),rest,locks+1,excluded.concat(hh.t)) : 0;
+    const cont=rest.length? lockCost(locks)+evFinish(freeLines.filter(x=>x!==hh.l),rest,locks+1,excluded.concat(groupMembers(hh.t))) : 0;
     ev += (hh.w/p)*(fix+cont);
   });
   return ev;
@@ -692,7 +754,7 @@ function simPieceCost(initLines,targets,seedKey,trials){
   }
   const N=targets.length;
   // infeasible piece (locked junk leaves fewer usable slots than targets) → never loops
-  const usable=initLines.filter(l=>!l||!l.locked||targets.includes(l.eff)).length;
+  const usable=initLines.filter(l=>!l||!l.locked||targets.includes(keyOf(l.eff))).length;
   if(usable<N) return {ev:Infinity, sd:0, keys:0};
   let total=0, totalSq=0, totalKeys=0;
   for(let t=0;t<trials;t++){
@@ -700,34 +762,35 @@ function simPieceCost(initLines,targets,seedKey,trials){
     let locked=initLines.map(l=>l?!!l.locked:false);
     // a target locked below its value target gets unlocked up front (free, no refund);
     // protect() re-locks it — paying the lock again — once it reaches the goal
-    locked=locked.map((lk,i)=>(lk&&lines[i]&&targets.includes(lines[i].eff)&&lines[i].tier<goalTier(lines[i].eff))?false:lk);
+    locked=locked.map((lk,i)=>(lk&&lines[i]&&targets.includes(keyOf(lines[i].eff))&&lines[i].tier<goalTier(lines[i].eff))?false:lk);
     // TEMP-LOCK MODE: locks the sim places cost keys per roll instead of rocks (they still
     // raise the roll price like any lock). Keys for the j-th temp lock after nPerm permanent
     // ones = 10·(nPerm+j)+10 → 20 for a first lock, 30 for a second (user-confirmed).
     const temp=!!state.tempLocks; const tempL=[false,false,false]; let keys=0;
-    const placeLock=i=>{ if(temp) tempL[i]=true; else cost+=lockCost(locked.filter(Boolean).length); locked[i]=true; };
+    // temp lock only for a PROVISIONAL hold (line below its value); a finished line gets a module lock
+    const placeLock=i=>{ const l=lines[i]; const prov=temp&&l&&l.tier<goalTier(l.eff); if(prov) tempL[i]=true; else cost+=lockCost(locked.filter(Boolean).length); locked[i]=true; };
     const roll=()=>{ const lk=locked.filter(Boolean).length; cost+=rerollCost(lk); if(temp){ const nPerm=locked.filter((x,i)=>x&&!tempL[i]).length, t=tempL.filter(Boolean).length; for(let j=1;j<=t;j++) keys+=10*(nPerm+j)+10; } };
     let cost=0, guard=0;
     while(guard++<6000){   // a 3-Black piece tops out ~1,500 actions; hitting this = something's unreachable
       const locks=locked.filter(Boolean).length;
       const GT=tg=>goalTier(tg);
-      const ok=targets.every(tg=>lines.some(l=>l&&l.eff===tg&&l.tier>=GT(tg)));   // every target type present AND at value
+      const ok=targets.every(tg=>lines.some(l=>l&&keyOf(l.eff)===tg&&l.tier>=GT(tg)));   // every target type present AND at value
       if(ok) break;
-      const nPresent=targets.filter(tg=>lines.some(l=>l&&l.eff===tg)).length;
+      const nPresent=targets.filter(tg=>lines.some(l=>l&&keyOf(l.eff)===tg)).length;
       // Reset Attributes (post-patch): every unlocked line rerolls its value with its own
       // current value excluded; Keep/Change is one joint decision — accept when a target
       // line reaches its goal, otherwise prefer lower seats ("park low").
-      const vscore=ls=>{ let s=0; ls.forEach((l,i)=>{ if(!l||locked[i]||!targets.includes(l.eff)) return; s+= l.tier>=GT(l.eff)?100:(l.tier<=5?2:(l.tier<=10?1:0)); }); return s; };
+      const vscore=ls=>{ let s=0; ls.forEach((l,i)=>{ if(!l||locked[i]||!targets.includes(keyOf(l.eff))) return; s+= l.tier>=GT(l.eff)?100:(l.tier<=5?2:(l.tier<=10?1:0)); }); return s; };
       // lock any unlocked target that already sits at its goal before an action that would
       // reroll it (post-patch a finished value can never repeat, so leaving it unlocked and
       // resetting = losing it). Mirrors the engine's "lock what's done" / bb-lock-on-sight.
-      const protect=(minGoal)=>{ for(let i=0;i<3;i++){ const l=lines[i]; if(l&&!locked[i]&&targets.includes(l.eff)&&l.tier>=GT(l.eff)&&GT(l.eff)>=minGoal) placeLock(i); } };
+      const protect=(minGoal)=>{ for(let i=0;i<3;i++){ const l=lines[i]; if(l&&!locked[i]&&targets.includes(keyOf(l.eff))&&l.tier>=GT(l.eff)&&GT(l.eff)>=minGoal) placeLock(i); } };
       const doReset=()=>{ protect(1); roll(); const cand=lines.map((l,i)=>(!l||locked[i])?l:{eff:l.eff,tier:bandTierEx(l.tier)}); if(vscore(cand)>vscore(lines)) lines=cand; };
       // EFFECT PHASE: lock a landed target at ANY value — L3 on sight, L2 at N-1 present
       if(nPresent<N){
         let acted=false;
         for(const i of [2,1]){
-          if(locked[i]||!lines[i]||!targets.includes(lines[i].eff)) continue;
+          if(locked[i]||!lines[i]||!targets.includes(keyOf(lines[i].eff))) continue;
           if(!(i===2||(i===1&&nPresent>=N-1))) continue;
           placeLock(i); acted=true; break;
         }
@@ -736,9 +799,9 @@ function simPieceCost(initLines,targets,seedKey,trials){
       // VALUE STAGE: every type present. Unlock below-target locked lines (free), protect
       // at-target unlocked lines, then reroll all remaining lines together, locking as they hit.
       if(nPresent===N){
-        lines.forEach((l,i)=>{ if(l&&locked[i]&&targets.includes(l.eff)&&l.tier<GT(l.eff)){ locked[i]=false; tempL[i]=false; } });
+        lines.forEach((l,i)=>{ if(l&&locked[i]&&targets.includes(keyOf(l.eff))&&l.tier<GT(l.eff)){ locked[i]=false; tempL[i]=false; } });
         const pend=[], ready=[];
-        lines.forEach((l,i)=>{ if(l&&!locked[i]&&targets.includes(l.eff)) (l.tier>=GT(l.eff)?ready:pend).push(i); });
+        lines.forEach((l,i)=>{ if(l&&!locked[i]&&targets.includes(keyOf(l.eff))) (l.tier>=GT(l.eff)?ready:pend).push(i); });
         if(pend.length){
           if(ready.length){ placeLock(ready[0]); continue; }
           doReset(); continue;
@@ -758,7 +821,7 @@ function simPieceCost(initLines,targets,seedKey,trials){
       const score=ls=>{
         let s=0;
         targets.forEach(tg=>{
-          const idx=ls.findIndex(l=>l&&l.eff===tg);
+          const idx=ls.findIndex(l=>l&&keyOf(l.eff)===tg);
           if(idx>=0) s+=10+(idx===2?2:(idx===1?1:0));
         });
         return s;
@@ -811,7 +874,7 @@ function totalRemainingEV(){
     while(k>0){
       let best=null;
       PIECES.forEach(p=>{
-        const lockedNonTarget=cls[p].filter(l=>l.locked&&(l.empty||!sets[p].includes(l.effect))).length;
+        const lockedNonTarget=cls[p].filter(l=>l.locked&&(l.empty||!sets[p].includes(keyOf(l.effect)))).length;
         if(sets[p].includes(e)||sets[p].length>=3-lockedNonTarget) return;
         const withE=pieceCostForTargets(p,sets[p].concat([e]),cls[p]);
         const marg=withE-est[p];
@@ -833,9 +896,11 @@ function rerollCost(locked){ return [1,2,3,4][Math.min(locked,3)]; }
 function lockCost(locked){ return [2,3,4,4][Math.min(locked,3)]; }
 
 /* Core recommender — returns the single best next action */
-// TEMP-LOCK MODE: every permanent-lock step becomes "hold it with a temp lock this roll" plus
-// the action that follows (keys, no rocks). Implemented by virtually locking the line and
-// asking the core engine what comes next — chained when two lines need holding.
+// TEMP-LOCK MODE: a PROVISIONAL hold (a target landed below its value, which gets freed again
+// for the value stage) becomes "hold it with a temp lock this roll" plus the action that
+// follows (keys, no modules). A FINAL hold (line at goal, locked for every remaining roll)
+// keeps the module lock: keys over a long value hunt cost far more than 2-3 modules.
+// Implemented by virtually locking the line and asking the core engine what comes next.
 function recommend(piece){
   const rec=recommendCore(piece);
   if(!state.tempLocks) return rec;
@@ -843,18 +908,23 @@ function recommend(piece){
   while(cur && held.length<2){
     const m=(cur.title||'').replace(/<[^>]+>/g,'').match(/^🔒 Lock Line (\d)/); if(!m) break;
     const i=+m[1]-1, l=state.pieces[piece][i]; if(!l||l.locked||held.includes(i)) break;
+    if(classifyLine(l).meets) break;   // finished line: final hold, module lock is the better buy
     saved.push(l); l.locked=true; held.push(i);
     cur=recommendCore(piece);
   }
   saved.forEach(l=>l.locked=false);
-  if(!held.length) return rec;
+  if(!held.length){
+    if(/^🔒 Lock Line/.test((rec.title||'').replace(/<[^>]+>/g,'')))
+      return Object.assign({},rec,{body:(rec.body||'')+'<span class="muted"> Module lock, not a temp lock: this line is finished and stays locked for every remaining roll, so keys would cost more than the modules.</span>'});
+    return rec;
+  }
   const nPerm=state.pieces[piece].filter(l=>l.locked).length;
   let keys=0; held.forEach((_,j)=>keys+=10*(nPerm+j+1)+10);
   const names=held.map(i=>'Line '+(i+1)).join(' + ');
   return Object.assign({},cur,{
     risk:cur.risk||rec.risk, a:rec.a,
     title:`🔑 Temp-lock ${names} (${keys} keys this roll) + ${cur.title}`,
-    body:`Temp-lock ${names} each roll instead of a permanent lock. Use "load previous lock settings" to reapply it. Then: ${cur.body||''}`,
+    body:`Temp-lock ${names}, then: ${cur.body||''}<span class="muted"> Reapply the temp lock each roll with "load previous lock settings".</span>`,
     cost:`${cur.cost?cur.cost+' · ':''}+ ${keys} keys per roll`});
 }
 function recommendCore(piece){
@@ -872,7 +942,7 @@ function recommendCore(piece){
   // Infeasible corner: the closure budget forced more musts onto this piece than 3 lines can hold.
   if(a.overflow)
     return {risk:'red',title:'⚠️ Requirements no longer fit on this piece',
-      body:`This piece would need ${a.mustAll.length} effects (${a.mustAll.join(', ')}) but a piece has 3 lines. Too many pieces finished without the shared effects. Lower a ×count in section 1 or roll one of the finished pieces again.`,
+      body:`This piece would need ${a.mustAll.length} effects (${a.mustAll.map(dispKeyLong).join(', ')}) but a piece has 3 lines. Too many pieces finished without the shared effects. Lower a ×count in section 1 or roll one of the finished pieces again.`,
       progress:prog(a),a};
 
   // DONE (all musts secured). If optional quota is still open elsewhere, say so —
@@ -881,16 +951,16 @@ function recommendCore(piece){
     const optNote=(a.optional&&a.optional.length)
       ? ' <span class="muted">'+a.optional.map(e=>{
           const f=(a.forcedOn&&a.forcedOn[e])||[];
-          return `${e}: ${a.ua.remaining[e]} more needed, ${f.length?`planned for <b>${f.join(' / ')}</b>`:'other pieces will pick it up'}`;
+          return `${dispKeyLong(e)}: ${a.ua.remaining[e]} more needed, ${f.length?`planned for <b>${f.join(' / ')}</b>`:'other pieces will pick it up'}`;
         }).join('; ')+'. This piece can finish without it.</span>'
       : '';
     return {risk:'done',title:'✅ This piece is finished',
-      body:`All ${N} wanted effect${N>1?'s are':' is'} at target. Stop rolling this piece. Locking the remaining lines is optional.${optNote}`,
+      body:`Stop rolling this piece.<span class="muted"> Locking the remaining lines is optional.</span>${optNote}`,
       progress:100,a};
   }
 
   const unlocked=lines.filter(l=>!l.locked);
-  const presentTypes=new Set(desiredLines.map(l=>l.effect));   // types present at any value
+  const presentTypes=new Set(desiredLines.map(l=>keyOf(l.effect)));   // requirement keys present at any value
   const presentCount=presentTypes.size;
   const riskByLocks=lockedCount>=2?'red':(lockedCount===1?'orange':'green');
   // a value worth protecting: at goal AND the goal is not "any value" (Crit, DEF, Charge Damage)
@@ -899,22 +969,22 @@ function recommendCore(piece){
   // ===== SOLVER-DERIVED RULES (exact optimal-policy audit, Oct 2026) =====
   // A locked line that is not part of this piece's plan only raises the price of every roll.
   const passS=passableSet();
-  const lockedJunk=lines.filter(l=>l.locked && !l.empty && !desired.includes(l.effect) && !(a.optional||[]).includes(l.effect) && !passS.includes(l.effect));
+  const lockedJunk=lines.filter(l=>l.locked && !l.empty && !desired.includes(keyOf(l.effect)) && !(a.optional||[]).includes(keyOf(l.effect)) && !passS.includes(l.effect));
   if(lockedJunk.length){
     const x=lockedJunk[0];
     return {risk:'green',
       title:`🔓 Unlock Line ${x.i+1} ${x.effect} (free)`,
-      body:`${x.effect} is not wanted on this piece, and the lock makes every roll cost more. Unlocking is free; the modules already spent are not refunded.`,
+      body:`Not wanted on this piece.<span class="muted"> The lock only raises the price of every roll. Unlocking is free; spent modules are not refunded.</span>`,
       cost:'Unlock: free', progress:prog(a), a};
   }
   // A locked Line 1 target: Line 1 always rolls something, so a lock there mostly buys a higher
   // roll price. The solver unlocks it whenever it is below goal, and also at goal while the
   // piece is still fishing for effects, unless the goal itself is Blue/Black.
   const l1=lines[0];
-  if(N>1 && l1.locked && !l1.empty && desired.includes(l1.effect) && (!l1.meets || (goalTier(l1.effect)<12 && presentCount<N && (lockedCount===1 || lines[1].locked) && !desiredLines.some(l=>l.i>0 && hard(l) && !l.locked)))){
+  if(N>1 && l1.locked && !l1.empty && desired.includes(keyOf(l1.effect)) && (!l1.meets || (goalTier(l1.effect)<12 && presentCount<N && (lockedCount===1 || lines[1].locked) && !desiredLines.some(l=>l.i>0 && hard(l) && !l.locked)))){
     return {risk:'green',
       title:`🔓 Unlock Line 1 ${l1.effect} (free)`,
-      body:`${l1.meets?`It is at target, but Line 1 always rolls, so the lock only raises the price of every roll while you fish for the other effects. Keep the better roll each time and it survives on its own.`:`It is below target. Line 1 always rolls, so there is nothing to protect yet; the lock only raises the price of every roll.`} Unlocking is free; the modules already spent are not refunded.`,
+      body:`<span class="muted">Line 1 always rolls, so a lock there only raises the roll price${l1.meets?' while you fish; keeping the better roll each time holds it anyway':''}. Unlocking is free; spent modules are not refunded.</span>`,
       cost:'Unlock: free', progress:prog(a), a};
   }
 
@@ -925,7 +995,7 @@ function recommendCore(piece){
       const mt=goalTier(low.effect), mv=goalVal(low.effect);
       return {risk:'green',
         title:`🎯 Reset Attributes until Line ${low.i+1} ${low.effect} reaches ${mv}% (Tier ${mt}+)`,
-        body:`The effect is on the piece but below your target. Press <b>Reset Attributes</b> until it reaches Tier ${mt}+. No lock needed with one target.${seatNote(low,lockedCount)}`,
+        body:`Press <b>Reset Attributes</b> until it reaches Tier ${mt}+.<span class="muted"> No lock needed with one target.</span>${seatNote(low,lockedCount)}`,
         cost:`Reset ≈ ${rerollCost(lockedCount)} modules each`, progress:prog(a), a};
     }
     const stuck=desiredLines.find(l=>!l.meets && l.locked);
@@ -933,12 +1003,12 @@ function recommendCore(piece){
       const mt=goalTier(stuck.effect), mv=goalVal(stuck.effect);
       return {risk:'orange',
         title:`⚠️ Line ${stuck.i+1} ${stuck.effect} is locked below your target (${stuck.val}% < ${mv}%)`,
-        body:`Unlock it (free; the modules spent on the lock are not refunded), then Reset Attributes until it reaches Tier ${mt}+. Or keep the low value, which counts as about half an effect.`,
+        body:`Unlock it (free), then Reset Attributes until it reaches Tier ${mt}+.<span class="muted"> Or keep the low value, which counts as about half an effect. Spent modules are not refunded.</span>`,
         progress:prog(a), a};
     }
     return {risk:'green',
-      title:`🔁 Change Effects until ${desired.join(' or ')} lands on any line`,
-      body:`Press <b>Change Effects</b> with nothing locked until <b>${desired.join(' / ')}</b> appears on any line. Then reset its value if needed.`,
+      title:`🔁 Change Effects until ${desired.map(dispKeyLong).join(' or ')} lands on any line`,
+      body:`Press <b>Change Effects</b> with nothing locked until it appears on any line.`,
       cost:`Change ≈ ${rerollCost(lockedCount)} modules each`, progress:prog(a), a};
   }
 
@@ -979,7 +1049,7 @@ function recommendCore(piece){
     const x=bbUnlocked[0];
     return {risk:x.i===0?'red':riskByLocks,
       title:`🔒 Lock Line ${x.i+1}: ${tierWord(x.tier)} ${x.effect} (${x.val}%, Tier ${x.tier})`,
-      body:`A ${tierWord(x.tier)} line at your target is too rare to risk. Lock it.${x.i===0?` Locking Line 1 is usually a bad idea, but a ${tierWord(x.tier)} roll at target is worth it.`:''}`,
+      body:`Too rare to risk.${x.i===0?`<span class="muted"> Locking Line 1 is usually a bad idea; a ${tierWord(x.tier)} at target is the exception.</span>`:''}`,
       cost:`Lock ≈ ${lockCost(lockedCount)} modules`, progress:prog(a), a};
   }
 
@@ -992,7 +1062,7 @@ function recommendCore(piece){
   if(misplacedL1 && !anyOn23){
     return {risk:riskByLocks,
       title:`🔁 Change Effects until a target lands on Line 2 or 3`,
-      body:`Your only target is on Line 1, which always rolls something and is filled last. Keep everything unlocked and press <b>Change Effects</b> until ${desired.join(' / ')} lands on <b>Line 2 or 3</b>, then lock that line. To keep this exact Line 1 roll, temp-lock Line 1 so only the other lines reroll.`,
+      body:`Keep everything unlocked and press <b>Change Effects</b> until ${desired.map(dispKeyLong).join(' / ')} lands on <b>Line 2 or 3</b>, then lock that line.<span class="muted"> Line 1 always rolls and is filled last. To keep this exact Line 1 roll, temp-lock Line 1.</span>`,
       cost:`Change ≈ ${rerollCost(lockedCount)} modules each`, progress:prog(a), a};
   }
 
@@ -1024,7 +1094,7 @@ function recommendCore(piece){
     return {risk:'green',
       title:multi?`🎯 Reset Attributes until ${resetCand.slice().sort((x,y)=>x.i-y.i).map(l=>'Line '+(l.i+1)).join(' or ')} reaches its target, then lock that line`
                  :`🎯 Reset Attributes until Line ${resetCand[0].i+1} ${resetCand[0].effect} reaches ${goalVal(resetCand[0].effect)}% (Tier ${goalTier(resetCand[0].effect)}+), then lock it`,
-      body:`${list}. Nothing is locked, so a reset costs 1 module and rerolls every line's value. Keep the roll when a target line reaches its value, then lock that line and go back to fishing for the missing effects. Locking it now instead would move the same value fishing to a higher roll price.`,
+      body:`${list}.<span class="muted"> Nothing is locked, so a reset costs 1 module. Locking now would move the same value fishing to a higher roll price.</span>`,
       cost:`Reset ≈ ${rerollCost(lockedCount)} modules each`, progress:prog(a), a};
   }
   const lockNow=atGoalCand.concat(belowCand);
@@ -1038,27 +1108,27 @@ function recommendCore(piece){
     let routeNote='';
     if(x.i===1 && N===3 && missing.length===1){
       const l3=lines[2];
-      const l3Junk=!l3.locked && !(!l3.empty && desired.includes(l3.effect) && l3.meets);
+      const l3Junk=!l3.locked && !(!l3.empty && desired.includes(keyOf(l3.effect)) && l3.meets);
       if(l3Junk){
         // simulate both routes (same engine as every displayed number)
         const clsLockL2=lines.map(l=>l===x?Object.assign({},l,{locked:true}):l);
         const evA=Math.round(lockCost(lockedCount)+pieceCostForTargets(null,desired,clsLockL2));
         const evB=Math.round(pieceCostForTargets(null,desired,lines));
-        routeNote=` <span class="warn">Locking Line 2 means the last effect (${missing[0]}) has to land on Line 3, a 30% line at ${rerollCost(lockedCount+1)} modules per roll: about ${evA} modules from here. The alternative is to keep rolling until ${missing[0]} or ${x.effect} lands on Line 3, lock Line 3, and fish Line 2 last: about ${evB}. Both are expensive.</span>`;
+        routeNote=` <span class="warn">Locking Line 2 means the last effect (${dispKeyLong(missing[0])}) has to land on Line 3, a 30% line at ${rerollCost(lockedCount+1)} modules per roll: about ${evA} modules from here. The alternative is to keep rolling until ${dispKeyLong(missing[0])} or ${x.effect} lands on Line 3, lock Line 3, and fish Line 2 last: about ${evB}. Both are expensive.</span>`;
       }
     }
     return {risk:riskByLocks,
       title:`🔒 Lock Line ${x.i+1}: ${x.effect} (${x.val}%, Tier ${x.tier})`,
-      body:`This target is ${why}. Lock it now at any value${x.meets?'':'; values are rerolled together once every effect is on the piece'}. Then keep fishing.${routeNote}${a.bbSacNote||''}`,
+      body:`Lock it now${x.meets?'':' at any value'}, then keep fishing.<span class="muted"> It is ${why}.${x.meets?'':' Values are rerolled together once every effect is on the piece.'}</span>${routeNote}${a.bbSacNote||''}`,
       cost:`Lock ≈ ${lockCost(lockedCount)} modules`, progress:prog(a), a};
   }
   // Solver: a locked below-goal Line 2 with no target on Line 3 is a lock bought too early when
   // three targets are wanted. Unlock it (free) and keep fishing at the lower roll price.
   const l2=lines[1];
-  if(N>=3 && presentCount<N && l2.locked && !l2.empty && desired.includes(l2.effect) && !l2.meets && !desiredLines.some(l=>l.i===2)){
+  if(N>=3 && presentCount<N && l2.locked && !l2.empty && desired.includes(keyOf(l2.effect)) && !l2.meets && !desiredLines.some(l=>l.i===2)){
     return {risk:'green',
       title:`🔓 Unlock Line 2 ${l2.effect} (free)`,
-      body:`It is below target and nothing sits on Line 3 yet, so this lock only raises the price of every roll while you fish. Unlocking is free; the modules already spent are not refunded. Lock Line 2 again once a target has landed on Line 3.`,
+      body:`Unlock it (free).<span class="muted"> Below target with nothing on Line 3, the lock only raises the roll price. Lock Line 2 again once a target lands on Line 3. Spent modules are not refunded.</span>`,
       cost:'Unlock: free', progress:prog(a), a};
   }
   // 4) All should-lock targets are secured. Fish for a still-missing type, or polish the last values.
@@ -1078,8 +1148,8 @@ function recommendCore(piece){
     const lowPresent=desiredLines.filter(l=>!l.meets && !l.locked && !l.bb);
     const lowNote=lowPresent.length?` <span class="muted">${lowPresent.map(l=>`${l.effect} on Line ${l.i+1} (${l.val}%)`).join(' and ')} is below target and will keep rerolling during this. That is fine; values are rerolled at the end.${lowPresent.some(l=>l.i===0)?' A Line 1 below Blue is never locked; it only needs to survive to the end.':''}</span>`:'';
     return {risk:riskByLocks,
-      title:`🔁 Change Effects until ${absent.join(' / ')} lands on ${onlyL1?'Line 1':freeTxt}`,
-      body:`Press <b>Change Effects</b> until <b>${absent.join(' or ')}</b> lands on ${where}. Keep the free lines unlocked. When it lands, lock it at any value; values are rerolled together at the end.${lowNote}${bbNote}`,
+      title:`🔁 Change Effects until ${absent.map(dispKeyLong).join(' / ')} lands on ${onlyL1?'Line 1':freeTxt}`,
+      body:`Press <b>Change Effects</b> until <b>${absent.map(dispKeyLong).join(' or ')}</b> lands on ${where}, then lock it at any value.<span class="muted"> Keep the free lines unlocked. Values are rerolled together at the end.</span>${lowNote}${bbNote}`,
       cost:`Change ≈ ${rerollCost(lockedCount)} modules each`, progress:prog(a), a};
   }
   // 5) VALUE STAGE — every effect is on the piece. Protect lines already at target, unlock
@@ -1096,7 +1166,7 @@ function recommendCore(piece){
       const after=lockedCount-belowLocked.length;
       return {risk:'green',
         title:`🔓 Unlock ${names} (free)`,
-        body:`${belowLocked.length>1?'These lines are':'It is'} below target. Unlocking is free; the modules already spent are not refunded. With every below-target line unlocked, each reset rolls them all at once and costs ${rerollCost(after)} module${rerollCost(after)>1?'s':''} instead of ${rerollCost(lockedCount)}.`,
+        body:`Unlock (free), then reset all below-target lines together.<span class="muted"> Each reset then costs ${rerollCost(after)} module${rerollCost(after)>1?'s':''} instead of ${rerollCost(lockedCount)}. Spent modules are not refunded.</span>`,
         cost:'Unlock: free', progress:prog(a), a};
     }
     const protectL=desiredLines.filter(l=>hard(l) && !l.locked).sort(byLine3First);
@@ -1112,7 +1182,7 @@ function recommendCore(piece){
     return {risk:riskByLocks,
       title:multi?`🎯 Reset Attributes until ${below.map(l=>'Line '+(l.i+1)).join(' or ')} reaches its target, then lock that line`
                  :`🎯 Reset Attributes until Line ${below[0].i+1} ${below[0].effect} reaches ${goalVal(below[0].effect)}% (Tier ${goalTier(below[0].effect)}+)`,
-      body:`${list}. ${multi?'Each reset rolls every unlocked line at once. Keep the roll when any line reaches its target, lock that line, and continue with the rest.':'Keep the roll when it reaches the target.'}${below.map(l=>seatNote(l,lockedCount)).join('')}`,
+      body:`${list}.${multi?' Lock each line as it hits.':''}${below.map(l=>seatNote(l,lockedCount)).join('')}`,
       cost:`Reset ≈ ${rerollCost(lockedCount)} modules each`, progress:prog(a), a};
   }
   return {risk:'done',title:'✅ This piece meets your target',body:'Nothing left to do on this piece.',progress:100,a};
@@ -1130,8 +1200,8 @@ const EFF_COLOR={'Elemental Damage':'#4aa3ff','ATK':'#2ea043','Max Ammo':'#d2892
 const BUDGET=12;   // 4 pieces × 3 lines — over-allocation is impossible by construction
 function tierSelect(e){
   const gsel=document.createElement('select'); gsel.title='Minimum acceptable value. Prydwen\'s minimum by default.';
-  const base=minTier(e);
-  for(let t=1;t<=15;t++){ const o=document.createElement('option'); o.value=t; o.textContent=`≥ T${t} · ${EFFECTS[e].vals[t-1]}%${t===base?' (Prydwen min)':(t>=15?' Black':(t>=12?' Blue':''))}`; o.className=tierClass(t); if(t===goalTier(e)) o.selected=true; gsel.appendChild(o); }
+  const base=minTier(e), mem=groupMembers(e);
+  for(let t=1;t<=15;t++){ const o=document.createElement('option'); o.value=t; o.textContent=`≥ T${t} · ${mem.map(m=>EFFECTS[m].vals[t-1]+'%').join(' / ')}${t===base?' (Prydwen min)':(t>=15?' Black':(t>=12?' Blue':''))}`; o.className=tierClass(t); if(t===goalTier(e)) o.selected=true; gsel.appendChild(o); }
   gsel.onchange=()=>{ if(!state.goalTierBy) state.goalTierBy={}; const t=+gsel.value; if(t===minTier(e)) delete state.goalTierBy[e]; else state.goalTierBy[e]=t; EV_CACHE.clear(); save(); renderAll(); };
   return gsel;
 }
@@ -1141,21 +1211,19 @@ function renderEffGrid(){
   const used=totalReqLines(), free=BUDGET-used;
   usedEl.textContent=used;
   document.getElementById('budgetFree').innerHTML = !effs.length
-    ? 'A unit has 12 lines (4 pieces × 3). Each ×count is how many pieces must carry that effect.'
-    : (free>0 ? `${free} line${free>1?'s':''} unassigned. Pieces can finish with 2 lines when the rest is covered elsewhere.`
-              : '<span class="full">Budget full. Lower a count to add more.</span>');
+    ? '12 lines: 4 pieces × 3. A ×count is how many pieces carry that effect.'
+    : (free>0 ? `${free} unassigned` : '<span class="full">full</span>');
   // the bar: one segment per line, filled in effect colours; ticks mark the four pieces
   const bar=document.getElementById('budgetBar'); bar.innerHTML='';
   const fill=[]; effs.forEach(e=>{ for(let i=0;i<reqOf(e);i++) fill.push(e); });
-  for(let i=0;i<BUDGET;i++){ const s=document.createElement('div'); s.className='seg'+(fill[i]?' filled':''); if(fill[i]) s.style.background=EFF_COLOR[fill[i]]; s.title=fill[i]||'free'; if((i+1)%3===0&&i<BUDGET-1) s.appendChild(h('<i class="pieceSep"></i>')); bar.appendChild(s); }
-  document.getElementById('budgetLegend').innerHTML=effs.map(e=>`<span><i class="sw" style="background:${EFF_COLOR[e]}"></i>${EFF_ABBR[e]||e} ×${reqOf(e)}</span>`).join('');
+  for(let i=0;i<BUDGET;i++){ const s=document.createElement('div'); s.className='seg'+(fill[i]?' filled':''); if(fill[i]) s.style.background=colorOf(fill[i]); s.title=fill[i]?dispKeyLong(fill[i]):'free'; if((i+1)%3===0&&i<BUDGET-1) s.appendChild(h('<i class="pieceSep"></i>')); bar.appendChild(s); }
   // one row per required effect
   const ua=unitAnalysis();
   const rows=document.getElementById('reqRows'); rows.innerHTML='';
   effs.forEach(e=>{
     const n=reqOf(e), left=ua.remaining[e]||0;
     const tr=document.createElement('tr');   // (h() can't parse <tr> outside a table)
-    tr.innerHTML=`<td class="name"><i class="sw" style="background:${EFF_COLOR[e]}"></i>${e}</td><td></td><td style="width:150px"><div class="share"><i style="width:${n/BUDGET*100}%;background:${EFF_COLOR[e]}"></i></div><div class="muted" style="font-size:11.5px">${n}/12 lines · ${left?left+' to find':'<span style="color:#5fd67a">✓ done</span>'}</div></td><td><span class="muted" style="font-size:12px">min value</span> </td><td style="width:30px"></td>`;
+    tr.innerHTML=`<td class="name"><i class="sw" style="background:${colorOf(e)}"></i>${dispKeyLong(e)}${isGroup(e)?'<span class="grp">ANY ONE</span>':''}</td><td></td><td><div class="sharecell"><div class="share"><i style="width:${n/4*100}%;background:${colorOf(e)}"></i></div><span class="muted" style="font-size:12px">${left?left+' to find':'<span style="color:#5fd67a">✓ done</span>'}</span></div></td><td><span class="muted" style="font-size:12px">min</span> </td><td style="width:30px"></td>`;
     const step=h(`<span class="stepper"><button title="one piece fewer">−</button><b>×${n}</b><button title="one piece more" ${(free<=0||n>=4)?'disabled':''}>+</button></span>`);
     const [minus,plus]=step.querySelectorAll('button');
     minus.onclick=()=>{ if(n-1<=0) delete state.req[e]; else state.req[e]=n-1; EV_CACHE.clear(); save(); renderEffGrid(); renderAll(); };
@@ -1166,22 +1234,52 @@ function renderEffGrid(){
     tr.children[4].appendChild(rm);
     rows.appendChild(tr);
   });
-  if(!effs.length) rows.innerHTML='<tr><td class="muted">No requirements yet. Pick a preset or add an effect.</td></tr>';
-  // add / passable pickers
-  const addSel=document.getElementById('addSel');
-  addSel.innerHTML='<option value="">— choose —</option>'+EFF_NAMES.filter(e=>!reqOf(e)&&!pass.includes(e)).map(e=>`<option value="${e}">${e}</option>`).join('');
-  addSel.disabled=free<=0;
-  addSel.onchange=()=>{ if(addSel.value&&free>0){ state.req[addSel.value]=1; EV_CACHE.clear(); save(); renderEffGrid(); renderAll(); } };
-  const passSel=document.getElementById('passSel');
-  passSel.innerHTML='<option value="">— add —</option>'+EFF_NAMES.filter(e=>!reqOf(e)&&!pass.includes(e)).map(e=>`<option value="${e}">${e}</option>`).join('');
-  passSel.onchange=()=>{ if(passSel.value){ state.req[passSel.value]='P'; save(); renderEffGrid(); renderAll(); } };
-  const chips=document.getElementById('passChips'); chips.innerHTML='';
-  pass.forEach(e=>{ const c=h(`<span class="badge b-other">${EFF_ABBR[e]||e} ~ <button class="rm" style="font-size:12px" title="remove">✕</button></span>`); c.querySelector('button').onclick=()=>{ delete state.req[e]; save(); renderEffGrid(); renderAll(); }; chips.appendChild(c); chips.appendChild(document.createTextNode(' ')); });
+  // passable bonuses as quiet rows of the same table
+  pass.forEach(e=>{
+    const tr=document.createElement('tr'); tr.className='passrow';
+    tr.innerHTML=`<td class="name"><i class="sw" style="background:${colorOf(e)};opacity:.5"></i>${e}</td><td><span class="badge b-other">passable</span></td><td colspan="2"><span class="muted" style="font-size:12px">bonus only: kept if it lands, never fished for, uses no lines</span></td><td style="width:30px"></td>`;
+    const rm=h('<button class="rm" title="remove">✕</button>'); rm.onclick=()=>{ delete state.req[e]; save(); renderEffGrid(); renderAll(); };
+    tr.children[4].appendChild(rm); rows.appendChild(tr);
+  });
+  if(!effs.length&&!pass.length) rows.innerHTML='<tr><td class="muted">No requirements yet. Pick a preset or add an effect below.</td></tr>';
+  // ---- the add bar: one click opens a picker in place ----
+  const taken=new Set([...EFF_NAMES.filter(e=>reqOf(e)>0), ...pass, ...reqGroups().flatMap(groupMembers)]);
+  const avail=EFF_NAMES.filter(e=>!taken.has(e));
+  const panel=document.getElementById('addPanel');
+  const commit=()=>{ EV_CACHE.clear(); save(); renderEffGrid(); renderAll(); };
+  const btns={eff:'addEffBtn',any:'addAnyBtn',pass:'addPassBtn'};
+  // one picker for all three: a strip of effect chips. Single modes add on click;
+  // "any of" toggles chips and confirms once two or more are picked.
+  const showPanel=mode=>{
+    Object.entries(btns).forEach(([m,id])=>document.getElementById(id).classList.toggle('on',m===mode));
+    panel.innerHTML='';
+    if(!mode) return;
+    if(mode!=='pass'&&free<=0){ panel.innerHTML='<span class="full">Budget full. Lower a count first.</span>'; return; }
+    const strip=h('<div class="pickstrip"></div>');
+    const picked=new Set();
+    const hint=h(`<span class="muted">${mode==='eff'?'Pick one:':(mode==='any'?'Pick two or more:':'Pick one (bonus only):')}</span>`);
+    strip.appendChild(hint);
+    avail.forEach(e=>{
+      const c=h(`<button class="chip"><i class="sw" style="background:${colorOf(e)}"></i>${e}</button>`);
+      c.onclick=()=>{
+        if(mode==='any'){ picked.has(e)?picked.delete(e):picked.add(e); c.classList.toggle('on',picked.has(e)); ok.disabled=picked.size<2; ok.textContent=picked.size<2?'Add group':`Add "${[...picked].map(x=>EFF_ABBR[x]||x).join(' or ')}"`; return; }
+        state.req[e]=mode==='eff'?1:'P'; commit();
+      };
+      strip.appendChild(c);
+    });
+    const ok=h('<button class="btn-primary" style="padding:5px 12px;font-size:13px" disabled>Add group</button>');
+    ok.onclick=()=>{ if(picked.size<2) return; state.req[groupKey([...picked])]=1; commit(); };
+    if(mode==='any') strip.appendChild(ok);
+    const cancel=h('<button class="btn-quiet" style="padding:5px 8px">Cancel</button>'); cancel.onclick=()=>showPanel(null);
+    strip.appendChild(cancel);
+    panel.appendChild(strip);
+  };
+  Object.entries(btns).forEach(([mode,id])=>{ const b=document.getElementById(id); if(b) b.onclick=()=>showPanel(b.classList.contains('on')?null:mode); });   // rebound each render
+  showPanel(null);
   // presets (wired once)
   const pr=document.getElementById('presets');
-  if(pr && !pr._wired){ pr._wired=true; pr.addEventListener('click',ev=>{ const b=ev.target.closest('button[data-preset]'); if(!b) return;
+  if(pr && !pr._wired){ pr._wired=true; pr.addEventListener('change',ev=>{ const p=pr.value; pr.value=''; if(p==='') return;
     const keepPass={}; passableSet().forEach(e=>keepPass[e]='P');
-    const p=b.dataset.preset;
     const base = p==='10'?{'Elemental Damage':4,'ATK':4,'Max Ammo':2} : p==='11'?{'Elemental Damage':4,'ATK':4,'Max Ammo':3} : p==='12'?{'Elemental Damage':4,'ATK':4,'Max Ammo':4} : p==='8'?{'Elemental Damage':4,'ATK':4} : {};
     state.req=Object.assign(p==='0'?{}:keepPass,base); EV_CACHE.clear(); save(); renderEffGrid(); renderAll(); }); }
 }
@@ -1229,15 +1327,19 @@ function renderGoalUI(){
     sel.value=goalPreset();
     if(!sel._wired){ sel._wired=true; sel.onchange=()=>{ if(sel.value!=='custom') applyGoalPreset(sel.value); EV_CACHE.clear(); save(); renderEffGrid(); renderAll(); }; }
   }
-  const lm=document.getElementById('lockMode');
-  if(lm){
-    lm.querySelectorAll('button').forEach(b=>b.classList.toggle('active',(b.dataset.mode==='temp')===!!state.tempLocks));
-    if(!lm._wired){ lm._wired=true; lm.addEventListener('click',ev=>{ const b=ev.target.closest('button[data-mode]'); if(!b) return; state.tempLocks=b.dataset.mode==='temp'; EV_CACHE.clear(); save(); renderAll(); }); }
+  const sw=document.getElementById('tempSwitch');
+  if(sw){
+    sw.checked=!!state.tempLocks;
+    const hintTxt=state.tempLocks
+      ?'Temp locks hold lines you will free again (a target landed below its value). Finished lines still get a module lock, which is cheaper than keys over many rolls. Each step shows the keys it burns per roll.'
+      :'Lock steps use Custom Modules. Turn this on if you have temp lock keys to spend.';
+    document.getElementById('tempHint').textContent=hintTxt; sw.closest('.lockmode').title=hintTxt;
+    if(!sw._wired){ sw._wired=true; sw.onchange=()=>{ state.tempLocks=sw.checked; EV_CACHE.clear(); save(); renderAll(); }; }
   }
   const chips=document.getElementById('reqChips');
   const diff=reqEffects().filter(e=>goalTier(e)!==minTier(e));
   if(chips && diff.length)
-    chips.appendChild(h(`<span class="badge b-blue" title="Value targets above Prydwen's minimums"> 🎯 ${diff.map(e=>`${EFF_ABBR[e]||e} T${goalTier(e)}+`).join(' · ')}</span>`));
+    chips.appendChild(h(`<span class="badge b-blue" title="Value targets above Prydwen's minimums"> 🎯 ${diff.map(e=>`${dispKey(e)} T${goalTier(e)}+`).join(' · ')}</span>`));
 }
 const EFF_ABBR={'Elemental Damage':'Ele','ATK':'ATK','Max Ammo':'Ammo','Charge Speed':'Chg Spd','Hit Rate':'Hit','Charge Damage':'Chg Dmg','Critical Rate':'Crit','Critical Damage':'Crit Dmg','DEF':'DEF'};
 function renderBuildSummary(){
@@ -1252,7 +1354,7 @@ function renderBuildSummary(){
   const total=totalReqLines();
   const ua=unitAnalysis();
   const secured=effs.reduce((s,e)=>s+(reqOf(e)-ua.remaining[e]-(ua.stuck[e]||0)),0);
-  const parts=effs.map(e=>`${e} ×${reqOf(e)}${ua.remaining[e]?` <span class="warn">(${ua.remaining[e]} to find)</span>`:' <span style="color:#5fd67a">✓</span>'}`).join(' · ');
+  const parts=effs.map(e=>`${dispKeyLong(e)} ×${reqOf(e)}${ua.remaining[e]?` <span class="warn">(${ua.remaining[e]} to find)</span>`:' <span style="color:#5fd67a">✓</span>'}`).join(' · ');
   let warn='';
   if(total>12) warn=`<div class="warn">⚠ ${total} lines required but a unit only has 12 (4 pieces × 3 lines) — reduce something.</div>`;
   else if(effs.filter(e=>reqOf(e)===4).length>3) warn=`<div class="warn">⚠ more than three ×4 effects can't fit — a piece holds max 3 lines.</div>`;
@@ -1265,7 +1367,7 @@ function renderBuildSummary(){
   el.innerHTML=`<b>Build: ${total} / 12 lines</b> &nbsp;·&nbsp; ${parts} &nbsp;<span class="muted">— secured ${secured} of ${total}</span>${evTxt}${benchTxt}${warn}`;
   // compact always-visible chips in the collapsed header
   if(chips){
-    const t=effs.map(e=>`<span class="badge ${ua.remaining[e]?'b-good':'b-lock'}" title="${e}${ua.remaining[e]?' — '+ua.remaining[e]+' to find':' — done'}">${EFF_ABBR[e]||e} ×${reqOf(e)}${ua.remaining[e]?'':' ✓'}</span>`).join(' ');
+    const t=effs.map(e=>`<span class="badge ${ua.remaining[e]?'b-good':'b-lock'}" title="${dispKeyLong(e)}${ua.remaining[e]?' — '+ua.remaining[e]+' to find':' — done'}">${dispKey(e)} ×${reqOf(e)}${ua.remaining[e]?'':' ✓'}</span>`).join(' ');
     const p=pass.length?' '+pass.map(e=>`<span class="badge b-other" title="Passable bonus">${EFF_ABBR[e]||e} ~</span>`).join(' '):'';
     const evChip=evOk?` <span class="badge b-other" title="Rough expected modules remaining from the current state${bench?' / full-build-from-scratch average':''}">📉 ~${evTot.ev} left${bench?` / ~${bench.ev} full`:''}</span>`:'';
     const warnChip=warn?' <span class="badge b-low">⚠</span>':'';
@@ -1290,8 +1392,8 @@ function renderTabs(){
       else sub=`${Math.min(a.distinctGood.size,a.N)} / ${a.N} secured`;
     }
     const tile=document.createElement('div');
-    tile.className='ptile'+(p===state.active?' active':'')+(isNext?' hasnext':'');
-    tile.innerHTML=`<div class="name">${p}</div><div class="sub ${ok?'ok':'muted'}">${sub}</div>${isNext?'<span class="next">NEXT</span>':''}`;
+    tile.className='ptile'+(p===state.active?' active':'')+(isNext?' hasnext':'')+(ok?' done':'');
+    tile.innerHTML=`<div class="name">${p}</div><div class="sub ${ok?'ok':'muted'}">${ok?'finished':sub}</div>${isNext?'<span class="next">NEXT</span>':''}`;
     tile.onclick=()=>{state.active=p;save();renderAll();};
     t.appendChild(tile);
   });
@@ -1303,7 +1405,10 @@ function renderLineEditors(){
   const aAct=reqEffects().length?analyze(state.active):null;   // for the inline status badges
   const passS=passableSet();
   lines.forEach((l,i)=>{
-    const row=h(`<div class="linerow"><span class="ln">Line ${i+1}</span></div>`);
+    const cl0=aAct?aAct.lines[i]:null;
+    const isDes=cl0&&!cl0.empty&&aAct.desired.includes(keyOf(cl0.effect));
+    const rowCls=(isDes?(cl0.meets?' done':' low'):'')+(l.locked?' held':'');
+    const row=h(`<div class="linerow${rowCls}"><span class="ln">Line ${i+1}${l.locked?' 🔒':''}</span></div>`);
     // effect select — a stat type can appear only once per gear, so grey out ones used on other lines
     const usedElsewhere=lines.filter((x,j)=>j!==i&&x.effect).map(x=>x.effect);
     const es=document.createElement('select');
@@ -1331,16 +1436,16 @@ function renderLineEditors(){
       let bg='';
       if(cl.empty) bg='<span class="badge b-other">empty</span>';
       else{
-        const isD=aAct.desired.includes(cl.effect), isP=passS.includes(cl.effect);
+        const ck=keyOf(cl.effect);
+        const isD=aAct.desired.includes(ck), isP=passS.includes(cl.effect);
         const gm=goalTier(cl.effect)!==minTier(cl.effect);
-        if(isD) bg+=cl.meets?`<span class="badge b-good">desired &middot; ${gm?'at goal':'meets min'}</span>`:`<span class="badge b-low">desired &middot; ${gm?'below goal':'below min'}</span>`;
-        else if(reqOf(cl.effect)>0) bg+=(aAct.ua&&aAct.ua.remaining[cl.effect]>0)?'<span class="badge b-other">needed elsewhere</span>':'<span class="badge b-other">spare</span>';
+        if(isD) bg+=cl.meets?`<span class="badge b-good">✓ done &middot; at ${gm?'goal':'min'}</span>`:`<span class="badge b-low">below ${gm?'goal':'min'} &middot; needs ${goalVal(cl.effect)}%+</span>`;
+        else if(reqOf(ck)>0) bg+=(aAct.ua&&aAct.ua.remaining[ck]>0)?'<span class="badge b-other">needed elsewhere</span>':'<span class="badge b-other">spare</span>';
         else if(isP) bg+='<span class="badge b-other">passable bonus</span>';
         else bg+='<span class="badge b-other">not wanted</span>';
         if(cl.tier>=15) bg+=' <span class="badge b-black">Black T15</span>';
         else if(cl.tier>=12) bg+=' <span class="badge b-blue">Blue T'+cl.tier+'</span>';
       }
-      if(cl.locked) bg+=' <span class="badge b-lock">locked</span>';
       row.appendChild(h('<span class="lbadges">'+bg+'</span>'));
     }
     box.appendChild(row);
@@ -1413,7 +1518,7 @@ function renderAdvice(){
       if(aT && aT.optional && aT.optional.length && !aT.overflow){
         const withOpt=pieceCostForTargets(target, aT.desired.concat(aT.optional), aT.lines);
         const marg=Math.round(withOpt-est);
-        if(isFinite(marg) && marg>0) carryTxt=` Add about ${marg} more if it ends up carrying ${aT.optional.map(e=>EFF_ABBR[e]||e).join('/')}.`;
+        if(isFinite(marg) && marg>0) carryTxt=` Add about ${marg} more if it ends up carrying ${aT.optional.map(dispKey).join('/')}.`;
       }
       whyItems.push(`<span>About ${est} modules to finish ${target}'s required effects.${carryTxt} Simulated average; luck swings hard.</span>`);
     }
@@ -1431,23 +1536,54 @@ function renderAdvice(){
     whyItems.push(`<span>💡 Lock timing: a lock only matters once you roll this piece again, and the price is the same later.${evap?' If you pause here, another piece might cover the shared effect and save this lock.':''}</span>`);
   }
 
+  // ---- risk line: a reroll that can touch a finished, unlocked line says so on the card ----
+  let riskLine='';
+  if(a && reqd && rec.risk!=='done'){
+    const plain=(rec.title||'').replace(/<[^>]+>/g,'');
+    const isRoll=/🔁|🎯/.test(plain);
+    const held=[...plain.matchAll(/Temp-lock Line (\d)/g)].map(m=>+m[1]-1).concat(plain.includes('Temp-lock')?[...plain.matchAll(/\+ Line (\d)/g)].map(m=>+m[1]-1):[]);
+    if(isRoll){
+      const atRisk=(a.desiredLines||[]).filter(l=>!l.locked && l.meets && goalTier(l.effect)>1 && !held.includes(l.i));
+      if(atRisk.length) riskLine=`<div class="riskline">⚠ This reroll can change ${atRisk.map(l=>`Line ${l.i+1} ${l.effect} (${l.val}%, at goal)`).join(' and ')}. Keep the old result unless the new one is better overall.`+(state.tempLocks?' To hold it, temp-lock that line first.':'')+`</div>`;
+    }
+  }
+  // ---- finished states: show what was secured ----
+  let securedLine='';
+  if(rec.risk==='done' && a){
+    const got=(a.desiredLines||[]).filter(l=>l.meets).map(l=>`${l.effect} ${l.val}%`);
+    if(allMet){ const tot=totalReqLines(); securedLine=`<div class="secured">All ${tot} required lines are secured across the unit. Nothing left to roll.</div>`; }
+    else if(got.length) securedLine=`<div class="secured">Secured on ${target}: ${got.join(' · ')}</div>`;
+  }
   const tag=allMet?'':`<span class="ptag">${target}${a?` · ${Math.min(a.distinctGood.size,a.N)} / ${a.N} secured`:''}</span>`;
-  const step=h(`<div class="step ${rec.risk}">${tag?`<div>${tag}</div>`:''}<h3>${rec.title}</h3>${cleanBody?`<div style="font-size:13.5px">${cleanBody}</div>`:''}${(rec.cost||evPill)?`<div style="margin-top:8px">${rec.cost?`<span class="pill">${rec.cost}</span><span class="pill">${riskLabel(rec.risk)}</span>`:''}${evPill}</div>`:''}</div>`);
+  const step=h(`<div class="step ${rec.risk}"><h3>${rec.title}${tag?` ${tag}`:''}</h3>${cleanBody?`<div style="font-size:13.5px">${cleanBody}</div>`:''}${riskLine}${securedLine}${(rec.cost||evPill)?`<div style="margin-top:8px">${rec.cost?`<span class="pill">${rec.cost}</span><span class="pill">${riskLabel(rec.risk)}</span>`:''}${evPill}</div>`:''}</div>`);
   adv.appendChild(step);
+
+  // ---- unit progress line in section 2 ----
+  const up=document.getElementById('unitProg');
+  if(up){
+    if(!reqd){ up.style.display='none'; }
+    else{
+      const tot=totalReqLines(); const ua=plan.ua;
+      const sec=reqEffects().reduce((s,e)=>s+(reqOf(e)-ua.remaining[e]-(ua.stuck[e]||0)),0);
+      const fin=PIECES.filter(p=>recommend(p).risk==='done').length;
+      up.style.display='flex';
+      document.getElementById('unitProgBar').style.width=(tot?Math.round(100*sec/tot):0)+'%';
+      document.getElementById('unitProgText').textContent=`${sec} of ${tot} lines secured · ${fin} of 4 pieces finished`;
+    }
+  }
 
   if(whyItems.length)
     adv.appendChild(h(`<details class="why"><summary>Why &amp; alternatives</summary><div class="wb">${whyItems.map(w=>`<div>${w}</div>`).join('')}</div></details>`));
 
   // ---- active-piece panel (section 2): its own pending step, for reference ----
   const aAct=analyze(state.active);
-  let aim=' · needs: '+(aAct.desired.length?aAct.desired.join(', '):'nothing, all covered');
+  let aim=' · needs: '+(aAct.desired.length?aAct.desired.map(dispKeyLong).join(', '):'nothing, all covered');
   if(aAct.optional && aAct.optional.length)
-    aim+=' · bonus if it lands: '+aAct.optional.map(e=>`${e} (${aAct.ua.remaining[e]} left)`).join(', ');
+    aim+=' · bonus if it lands: '+aAct.optional.map(e=>`${dispKeyLong(e)} (${aAct.ua.remaining[e]} left)`).join(', ');
   document.getElementById('pieceMeta').textContent=`${aAct.lockedCount} locked${aim}`;
   const actBox=document.getElementById('activeAdvice');
   if(actBox){
-    if(!reqd){ actBox.textContent=''; }
-    else if(target===state.active){ actBox.innerHTML=`▶ Next move is on this piece. See section 3.`; }
+    if(!reqd || target===state.active){ actBox.textContent=''; }   // the NEXT tag on the tile already says it
     else{
       const recAct=recommend(state.active);
       actBox.innerHTML=recAct.risk==='done'?'This piece is finished.':`Later step for this piece: <i>${recAct.title}</i>`;
@@ -1490,17 +1626,17 @@ function renderTotals(){
   // one-line digest in the collapsed summary
   const dig=document.getElementById('totalsDigest');
   if(dig) dig.textContent=reqd.length
-    ? reqd.map(e=>{const g=agg[e]||{total:0};return `${EFF_ABBR[e]||e} ${parseFloat(g.total.toFixed(1))}%${(ua.remaining[e]||0)?'':' ✓'}`;}).join(' · ')+' · click for the table'
+    ? reqd.map(e=>{const tot=groupMembers(e).reduce((s,m)=>s+((agg[m]||{total:0}).total),0);return `${dispKey(e)} ${parseFloat(tot.toFixed(1))}%${(ua.remaining[e]||0)?'':' ✓'}`;}).join(' · ')
     : 'nothing entered yet';
   // show required effects (even at 0 rolls, so gaps are visible) plus anything rolled
-  const rows=EFF_NAMES.filter(e=>reqd.includes(e)||pass.includes(e)||agg[e]);
+  const rows=EFF_NAMES.filter(e=>reqd.includes(keyOf(e))||pass.includes(e)||agg[e]);
   if(!rows.length){ box.innerHTML='<span class="muted">Nothing entered yet. Set requirements and fill in your pieces.</span>'; return; }
   let html='<div style="overflow-x:auto"><table style="max-width:900px"><tr><th style="text-align:left">Effect</th><th>Needed</th><th>Still to find</th><th>Rolls</th><th>Total %</th><th>Counts as</th><th style="text-align:left">Where</th></tr>';
   rows.forEach(e=>{
     const a=agg[e]||{total:0,count:0,x:0,chips:[]};
-    const req=reqOf(e);
-    const role=req>0?` <span class="badge b-good">×${req}</span>`:(pass.includes(e)?' <span class="badge b-other">Passable</span>':'');
-    const rem=req>0?(ua.remaining[e]?`<span class="warn">${ua.remaining[e]}</span>`:'<span style="color:#5fd67a">✓ done</span>'):'—';
+    const k=keyOf(e), req=reqOf(k);
+    const role=req>0?` <span class="badge b-good">×${req}${isGroup(k)?' · any of '+dispKey(k):''}</span>`:(pass.includes(e)?' <span class="badge b-other">Passable</span>':'');
+    const rem=req>0?(ua.remaining[k]?`<span class="warn">${ua.remaining[k]}</span>`:'<span style="color:#5fd67a">✓ done</span>'):'—';
     const chips=a.chips.map(c=>`<span class="badge ${c.tier>=15?'b-black':(c.tier>=12?'b-blue':'b-other')}" title="Line ${c.i+1}">${c.p} T${c.tier} · ${c.v}%${c.locked?' 🔒':''}</span>`).join(' ');
     html+=`<tr><td style="text-align:left">${e}${role}</td><td>${req>0?'×'+req:'—'}</td><td>${rem}</td><td>${a.count}</td><td><b>${parseFloat(a.total.toFixed(2))}%</b></td><td>${a.x?a.x+'×':'—'}</td><td style="text-align:left">${chips||'<span class="muted">none</span>'}</td></tr>`;
   });
