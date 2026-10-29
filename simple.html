@@ -26,10 +26,31 @@
   select:focus{outline:1px solid var(--accent)}
   button{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:7px 12px;font:inherit;cursor:pointer}
   button:hover{border-color:var(--accent)}
-  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
-  .tab{padding:8px 14px;border-radius:8px 8px 0 0;border:1px solid var(--line);background:var(--panel2);cursor:pointer;font-size:14px}
-  .tab.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
-  .tab .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:7px;vertical-align:middle}
+  /* 2x2 piece grid in the game's order: Head | Body over Arm | Leg, beside the line editors */
+  .side{display:grid;grid-template-columns:clamp(200px,28%,260px) 1fr;gap:14px;align-items:start}
+  .pgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  .ptile{position:relative;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;min-height:58px}
+  .ptile:hover{border-color:var(--accent)}
+  .ptile.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .ptile.active .muted{color:#dbeaff}
+  .ptile .name{font-weight:700;font-size:14.5px}
+  .ptile .sub{font-size:12px}
+  .ptile .sub.ok{color:#5fd67a}
+  .ptile.active .sub.ok{color:#dbeaff}
+  .ptile .next{position:absolute;top:9px;right:10px;font-size:10px;font-weight:800;background:var(--accent);color:#fff;border-radius:8px;padding:1px 7px;letter-spacing:.3px}
+  .ptile.active .next{background:#fff;color:var(--accent)}
+  .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;white-space:nowrap}
+  .btn-primary:hover{background:#3a8fe0;border-color:#3a8fe0}
+  .btn-quiet{font-size:12.5px;padding:5px 10px;color:var(--muted)}
+  .btn-quiet:hover{color:var(--text)}
+  /* "work on another piece" notice: a quiet row with one clear button */
+  .switchbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:8px 10px 8px 14px;margin-bottom:10px;font-size:14px}
+  .switchbar .txt{min-width:0}
+  .switchbar.ok{border-left-color:var(--green)}
+  .ptile.hasnext .name{padding-right:46px}
+  .badge{white-space:nowrap}
+  @media (max-width:1000px){ .side .linerow{grid-template-columns:52px minmax(120px,1.2fr) 140px 78px} .side .lbadges{grid-column:1/-1;justify-content:flex-start} }
+  @media (max-width:600px){ .side{grid-template-columns:1fr} }
   table{border-collapse:collapse;width:100%;font-size:12.5px}
   th,td{border:1px solid var(--line);padding:4px 6px;text-align:center}
   th{background:var(--panel2);color:var(--muted);font-weight:600}
@@ -83,8 +104,19 @@
   .warnline{display:flex;gap:6px;align-items:baseline;border:1px solid #4a3714;background:linear-gradient(90deg,var(--orangebg),var(--panel) 60%);border-radius:10px;padding:8px 13px;font-size:13px;margin-bottom:18px}
   .reqsum{cursor:pointer;padding:0}
   .reqsum::marker{color:var(--accent)}
-  #reqPanel .eff{padding:4px 8px}
-  #reqPanel .eff-grid{grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:6px;margin-top:4px}
+  /* target cards: one consistent shape — row 1 = effect + role, row 2 = min value */
+  #reqPanel .eff{display:grid;grid-template-columns:1fr auto;align-items:center;row-gap:6px;column-gap:8px;padding:8px 10px}
+  #reqPanel .eff > span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+  #reqPanel .eff-grid{grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px;margin-top:4px}
+  .tierrow{grid-column:1/-1;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);min-height:26px}
+  .tierrow select{flex:1;min-width:0;padding:3px 6px;font-size:12.5px}
+  .tierrow.off{opacity:.65}
+  .lockmode{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-2px 0 12px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg button{border:none;border-radius:0;padding:8px 14px;font-size:13.5px;font-weight:600;background:var(--panel2);color:var(--muted)}
+  .seg button+button{border-left:1px solid var(--line)}
+  .seg button:hover{color:var(--text)}
+  .seg button.active{background:var(--accent);color:#fff}
   .linerow{grid-template-columns:52px minmax(140px,1.2fr) 150px 78px 1fr}
   .lbadges{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
   .why{margin-top:9px;font-size:13px}
@@ -96,15 +128,12 @@
 <body>
 <script>/* inside the tab shell the top bar already names and describes this page — drop the duplicate header */
 if(window.self!==window.top)document.documentElement.classList.add('embedded');</script>
-<style>.embedded .wrap>h1,.embedded .wrap>.sub{display:none}.embedded .wrap{padding-top:14px}
-.patchwarn{border:2px solid var(--red);background:var(--redbg);color:#ffb4ad;border-radius:10px;padding:12px 16px;font-size:15px;line-height:1.45;margin-bottom:16px}
-.patchwarn b{color:#ff8a80}</style>
+<style>.embedded .wrap>h1,.embedded .wrap>.sub{display:none}.embedded .wrap{padding-top:14px}</style>
 <div class="wrap">
-  <div class="patchwarn">🚧 <b>NOT YET UPDATED FOR THE LATEST GAME PATCH.</b> A recent NIKKE update changed the overload reroll (rock) logic. This tool still runs the <b>old rules</b>, so its advice and cost estimates may be wrong until it's updated — <b>update to come</b>.</div>
   <h1>NIKKE Overload Reroll Advisor</h1>
-  <p class="sub">Tells you the single best next move — Change Effects, Reset Attributes, or Lock — based on Prydwen's reroll logic. Set your target, enter what each gear piece shows, and follow the step.</p>
+  <p class="sub">Shows the single best next move for one gear piece: Change Effects, Reset Attributes or Lock. Set your target, enter the piece, follow the step.</p>
 
-  <div class="warnline">⚠️&nbsp;<span><b style="color:#e0a94a">Guide only — use your own judgment.</b> Sanity-check expensive moves; RNG swings hard in both directions. <details style="display:inline"><summary style="display:inline;cursor:pointer;color:var(--accent)">more</summary> <span class="muted">This tool encodes one interpretation of the community flowcharts and may contain bugs, mistakes, or unhandled edge cases — sanity-check anything expensive before committing modules. Roll according to your own rock economy and stop whenever your budget says stop.</span></details></span></div>
+  <div class="warnline">⚠️&nbsp;<span><b style="color:#e0a94a">Guide only. Use your own judgment.</b> Luck swings hard. <details style="display:inline"><summary style="display:inline;cursor:pointer;color:var(--accent)">more</summary> <span class="muted">This tool is one reading of the community flowcharts and may have bugs or miss edge cases. Check anything expensive before spending modules. Stop when your budget says stop.</span></details></span></div>
 
   <!-- ================= TARGETS ================= -->
   <div class="card">
@@ -114,46 +143,55 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
         <span id="tgtChips" style="margin-left:10px"></span>
         <span class="muted" style="font-size:12px;margin-left:8px">(click to edit)</span>
       </summary>
-      <p class="muted" style="margin-top:10px;font-size:13px">Mark the effects you want as <b>Target</b> (the guide's Essential &amp; Ideal — the reroll logic treats them identically). <b>Passable</b> = keep only as a bonus, never aimed for.</p>
+      <p class="muted" style="margin-top:10px;font-size:13px">Mark the effects you want as <b>Target</b>. <b>Passable</b> means keep it as a bonus only.</p>
       <div id="effGrid" class="eff-grid"></div>
       <div class="row" style="margin-top:12px">
         <label>Desired lines wanted <b>per piece</b> (Category):</label>
         <select id="targetN"></select>
         <span id="catLabel" class="muted"></span>
       </div>
+      <div class="row" style="margin-top:10px;font-size:13px">
+        <label for="valGoal" class="muted" title="A preset fills every Target's min value. You can also set each one yourself. Prydwen's table is in Reference."><b>Value targets</b> ⓘ</label>
+        <select id="valGoal"><option value="prydwen">Prydwen minimums</option><option value="blue">Blue+ (Tier 12+)</option><option value="black">Black (Tier 15)</option><option value="custom">Custom (per effect)</option></select>
+      </div>
     </details>
-  </div>
-
-  <!-- ================= RECOMMENDED PIECE ================= -->
-  <div class="card" id="bannerCard" style="display:none">
-    <div class="rec-banner" id="banner"></div>
   </div>
 
   <!-- ================= PIECES ================= -->
   <div class="card">
     <h2>2 · Enter the gear piece</h2>
-    <div class="tabs" id="pieceTabs"></div>
-    <p class="muted" style="margin-top:-4px;font-size:12.5px">ⓘ Set each line to what the game shows · tick <b>Lock</b> for locked lines · ATK-build overload order: Head → Arm → Body → Leg.</p>
-    <div class="lines" id="lineEditors"></div>
-    <div class="row" style="margin-top:10px">
-      <button id="clearPiece">Clear this piece</button>
-      <span class="muted" id="pieceMeta"></span>
+    <p class="muted" style="margin-top:-6px;font-size:12.5px">Set each line to what the game shows. Tick <b>Lock</b> for locked lines. Overload order for ATK builds: Head → Arm → Body → Leg.</p>
+    <div id="bannerCard" style="display:none"><div class="switchbar" id="banner"></div></div>
+    <div class="side">
+      <div class="pgrid" id="pieceTabs"></div>
+      <div>
+        <div class="lines" id="lineEditors" style="margin-top:0"></div>
+        <div class="row" style="margin-top:10px">
+          <span class="muted" id="pieceMeta" style="font-size:13px"></span>
+          <button id="clearPiece" class="btn-quiet" style="margin-left:auto">Clear this piece</button>
+        </div>
+      </div>
     </div>
   </div>
 
   <!-- ================= ADVICE ================= -->
   <div class="card">
     <h2>3 · Do this next</h2>
+    <div class="lockmode" id="lockMode">
+      <span class="muted">Locks:</span>
+      <span class="seg">
+        <button data-mode="perm" title="Lock steps use Custom Modules">🔒 Permanent (modules)</button>
+        <button data-mode="temp" title="Lock steps use temp lock keys instead of modules">🔑 Temp locks (keys)</button>
+      </span>
+    </div>
     <div id="advice"></div>
-    <div class="progress"><i id="progBar" style="width:0%"></i></div>
-    <div class="muted" id="progText" style="font-size:13px"></div>
   </div>
 
   <!-- ================= TOTALS ================= -->
   <div class="card">
     <details id="totalsFold">
       <summary class="reqsum"><h2 style="display:inline;margin:0">4 · Unit totals</h2> <span id="totalsDigest" class="muted" style="font-size:12.5px;margin-left:8px"></span></summary>
-      <p class="muted" style="margin-top:10px;font-size:13px">Every rolled effect summed across Head / Arm / Body / Leg. A roll at or above its minimum counts as <b>1×</b>, below it as <b>0.5×</b> (Charge Damage / Crit / DEF always 1×). Use this for stacked requirements like "120% Max Ammo total".</p>
+      <p class="muted" style="margin-top:10px;font-size:13px">All rolled effects summed across the four pieces. A roll at or above its minimum counts as <b>1×</b>, below it as <b>0.5×</b> (Charge Damage, Crit and DEF always count 1×). Useful for stacked targets like 120% total Max Ammo.</p>
       <div id="totals"></div>
     </details>
   </div>
@@ -181,15 +219,17 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
         <tr><td>Lock a line</td><td>1 → 2</td><td>3</td><td>30</td></tr>
         <tr><td>Reroll</td><td>2</td><td>3</td><td>—</td></tr>
       </table>
-      <p class="muted" style="font-size:12.5px">Custom (temporary) locks hold a line for one reroll and save modules — great for batching value resets. Unlocking never refunds modules.</p>
+      <p class="muted" style="font-size:12.5px">A temp lock holds a line for one reroll and costs keys instead of modules. Unlocking is free but never refunds modules.</p>
     </details>
     <details>
-      <summary>The two reroll buttons &amp; key definitions</summary>
+      <summary>The two reroll buttons and key terms</summary>
       <ul class="muted" style="font-size:13.5px">
-        <li><b>Change Effects</b> — rerolls the <i>effect types</i> on every unlocked line (values change too). Use this to fish for the stats you want.</li>
-        <li><b>Reset Attributes</b> — rerolls only the <i>value %</i> of existing effects on unlocked lines; types stay, empty lines stay empty. Use this to push a good stat above its minimum.</li>
-        <li><b>Blue line</b> = Tier 12–14 (rare, high value). <b>Black line</b> = Tier 15 (highest, ~1% — basically never reroll these away).</li>
-        <li><b>Lock</b> a good line before Change-Effects fishing so you don't lose it. Locking Line 1 is discouraged unless it's Blue/Black, because Line 1 always rolls something anyway — you'd rather keep it free and fill it last.</li>
+        <li><b>Change Effects</b> rerolls the effect type on every unlocked line (values change too). Use it to find the effects you want.</li>
+        <li><b>Reset Attributes</b> rerolls only the value of each unlocked line. Types stay, empty lines stay empty.</li>
+        <li><b>Value rule since the Oct 2026 patch:</b> a reset never repeats a line's current value. Rolling from a Phase 1 to 5 value makes every other value about 14% more likely; rolling from Tier 11 or higher gains nothing. Black from a Phase 1 to 5 value takes about 88 resets (99 from Tier 11+); Blue or better about 22 (25). When hunting Blue or Black, accept only the target tier. A Phase 6 to 10 value is only about 6% worse than Phase 1 to 5, so keep good mid rolls. If you stop early, take the best value offered; re-parking later costs about 2 rolls. Change Effects is unaffected.</li>
+        <li><b>Blue line</b> = Tier 12 to 14. <b>Black line</b> = Tier 15 (about 1% per roll).</li>
+        <li><b>Lock</b> a good line before fishing with Change Effects so you keep it. Avoid locking Line 1 first unless it is Blue or Black: Line 1 always rolls something, so fill it last.</li>
+        <li><b>Effects first, then values together.</b> Lock each effect as it lands, whatever its value. Once every effect is on the piece, unlock the ones below target (free) and reroll values with all of them in play. Each reset rolls every unlocked line at once, so more lines in play means more chances per module. Lock each line when it reaches its target.</li>
       </ul>
     </details>
   </div>
@@ -197,9 +237,9 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
   <!-- ================= SOURCE / FLOWCHARTS ================= -->
   <div class="card">
     <h2>Source flowcharts &amp; guide</h2>
-    <p class="muted" style="margin-top:-6px">This tool follows Prydwen's official reroll flowcharts. Read the full guide for context and worked examples:</p>
+    <p class="muted" style="margin-top:-6px">Based on Prydwen's reroll flowcharts:</p>
     <div class="row" style="margin-bottom:14px">
-      <a class="guidebtn" href="https://www.prydwen.gg/nikke/guides/overload-gear-reroll" target="_blank" rel="noopener">📖 Prydwen · Overload Gear — Rerolling ↗</a>
+      <a class="guidebtn" href="https://www.prydwen.gg/nikke/guides/overload-gear-reroll" target="_blank" rel="noopener">📖 Prydwen: Overload Gear Rerolling ↗</a>
       <a class="guidebtn alt" href="https://www.prydwen.gg/nikke/guides/overload-gear-intro" target="_blank" rel="noopener">Intro guide ↗</a>
     </div>
 
@@ -207,7 +247,7 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
       <summary>Category 2 flowchart (2 effects)</summary>
       <img class="flowimg" src="flowchart-cat2.png" alt="Category 2 flowchart"
            onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
-      <div class="imgfallback">To show the original flowchart image here, save it next to this file as <code>flowchart-cat2.png</code>. Until then, here's the same logic in text:</div>
+      <div class="imgfallback">Flowchart image missing (<code>flowchart-cat2.png</code>). The same logic in text:</div>
       <div class="flow">
         <div class="fnode">Target on <b>Line 1</b> &amp; it's a <b>Blue/Black</b> line?</div>
         <div class="fbranch"><span class="ftag red">yes</span> Lock Line 1 → Change Effects until 2nd target on Line 2/3 → reset to min → done. <i>(highest cost)</i></div>
@@ -215,7 +255,7 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
         <div class="fnode">No target on Line 2/3 yet (or only a non-Blue/Black one on Line 1)?</div>
         <div class="fbranch"><span class="ftag">→</span> Change Effects (don't lock) until a target appears on Line 2/3.</div>
         <div class="fnode">Both targets already present?</div>
-        <div class="fbranch"><span class="ftag green">done</span> Reset attributes so both meet their minimum — finished.</div>
+        <div class="fbranch"><span class="ftag green">done</span> Reset attributes until both meet their minimum. Done.</div>
       </div>
     </details>
 
@@ -223,26 +263,26 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
       <summary>Category 3 flowchart (3 effects)</summary>
       <img class="flowimg" src="flowchart-cat3.png" alt="Category 3 flowchart"
            onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
-      <div class="imgfallback">To show the original flowchart image here, save it next to this file as <code>flowchart-cat3.png</code>. Until then, here's the same logic in text:</div>
+      <div class="imgfallback">Flowchart image missing (<code>flowchart-cat3.png</code>). The same logic in text:</div>
       <div class="flow">
         <div class="fnode">No target on Line 2/3 yet?</div>
         <div class="fbranch"><span class="ftag">→</span> Change Effects until a target lands on Line 2/3.</div>
         <div class="fnode"><b>One</b> target present:</div>
         <div class="fbranch"><span class="ftag blue">on Line 3</span> Reset to min → <b>Lock Line 3</b> → Change Effects for another target on Line 1/2. <i>(secure the rarest slot)</i></div>
         <div class="fbranch"><span class="ftag orange">on Line 2, Blue/Black</span> Lock Line 2 → Change Effects for another on Line 3 → reset → Lock Line 3.</div>
-        <div class="fbranch"><span class="ftag">on Line 2, not Blue/Black</span> Change Effects (don't lock) until another target on Line 2/3.</div>
+        <div class="fbranch"><span class="ftag">on Line 2, below Blue</span> Change Effects (don't lock) until another target on Line 2/3.</div>
         <div class="fnode"><b>Two</b> targets present:</div>
         <div class="fbranch"><span class="ftag blue">both on Line 2+3</span> Reset to min → Lock both Line 2 &amp; 3 → Change Effects for the last on Line 1 → reset → done. <i>(least risk)</i></div>
         <div class="fbranch"><span class="ftag red">one on Line 1, Blue/Black</span> Lock Line 1 → Lock the other → Change Effects for the last on the remaining line. <i>(highest risk)</i></div>
-        <div class="fbranch"><span class="ftag">one on Line 1, not Blue/Black</span> Treat the Line 1 copy as expendable churn: reset &amp; <b>lock the Line 2/3 one</b>, then Change Effects until the remaining targets land on the free lines.</div>
+        <div class="fbranch"><span class="ftag">one on Line 1, below Blue</span> Line 1 can be rerolled away. <b>Lock the Line 2/3 one</b>, then Change Effects until the remaining targets land on the free lines.</div>
         <div class="fnode"><b>Three</b> targets present:</div>
-        <div class="fbranch"><span class="ftag green">done</span> Reset attributes so each meets its minimum — finished.</div>
+        <div class="fbranch"><span class="ftag green">done</span> Reset attributes until each meets its minimum. Done.</div>
       </div>
     </details>
     <p class="muted" style="font-size:12px;margin-bottom:0">Colour key (from the original charts): <span class="ftag blue">blue</span> least-risk path · <span class="ftag orange">orange</span> higher risk · <span class="ftag red">red</span> highest risk of being expensive.</p>
   </div>
 
-  <p class="muted" style="font-size:12px">This is a decision aid; rerolling is RNG — your mileage will vary. Your setup is saved in this browser only.</p>
+  <p class="muted" style="font-size:12px">Rerolling is random; results vary. Your setup is saved in this browser only.</p>
   <div id="hitWrap" style="margin-top:10px"><img id="hitBadge" alt="hits" style="height:20px"></div>
   <script>
     // The whole-unit page carries the counter when both pages load inside the
@@ -289,6 +329,7 @@ function tierWord(t){ return t>=15?'Black':(t>=12?'Blue':''); }
 const DEFAULT = {
   roles:{},              // effect -> 'Target'|'Passable'
   N:3,
+  goalTierBy:{},         // effect -> minimum acceptable tier chosen by the user (absent = Prydwen's minimum)
   active:'Head',
   pieces:{}              // piece -> [{effect:'',tier:11,locked:false} x3]
 };
@@ -312,12 +353,37 @@ function save(){ localStorage.setItem('nikkeOL', JSON.stringify(state)); }
 function desiredSet(){ return EFF_NAMES.filter(e=>state.roles[e]==='Target'); }
 function passableSet(){ return EFF_NAMES.filter(e=>state.roles[e]==='Passable'); }
 
+/* ---- VALUE GOALS (post-patch value rules) ---------------------------------
+   Reset Attributes now excludes each unlocked line's CURRENT value and
+   renormalizes the rest, so the seat you fish from changes the odds (a Phase
+   1–5 seat boosts everything else ×1/0.88). Goal 'min' = the guide's minimums
+   (unchanged behaviour); 'blue' = Tier 12+; 'black' = Tier 15. */
+// The user picks each effect's minimum acceptable tier (Prydwen's minimum by default;
+// Blue+/Black presets fill them in). Everything downstream reads goalTier().
+function goalTier(e){ const t=state.goalTierBy&&state.goalTierBy[e]; return (t>=1&&t<=15)?t:minTier(e); }
+function goalVal(e){ return EFFECTS[e].vals[goalTier(e)-1]; }
+function goalKind(e){ const g=goalTier(e); return g===minTier(e)?'min':(g>=15?'black':(g>=12?'blue':'custom')); }
+function goalLabel(e){ const g=goalTier(e); return `Tier ${g}+ (${goalVal(e)}%${g>=15?', Black':(g>=12?', Blue':'')})`; }
+const BIN_P=t=>t<=5?0.12:(t<=10?0.07:0.01);
+function pAtLeast(tier){ let p=0; for(let t=Math.max(1,tier);t<=15;t++) p+=BIN_P(t); return p; }
+// expected resets to reach the goal from the current seat (held value excluded, rest renormalized)
+function resetsFrom(e,heldTier){ const g=goalTier(e); if(g<=1||heldTier>=g) return 0; return (1-BIN_P(heldTier))/pAtLeast(g); }
+function seatNote(l,lockedCount){
+  const g=goalTier(l.effect);
+  if(g<11) return '';   // park-low only pays off for 1%-bin targets (Tier 11+); below that it's a ~1–2% edge
+  const rolls=resetsFrom(l.effect,l.tier), rocks=Math.round(rolls*rerollCost(lockedCount));
+  const seat = l.tier<=5 ? `Line ${l.i+1} is at Phase 1 to 5, the best place to roll from.`
+             : l.tier<=10 ? `Line ${l.i+1} is at Phase 6 to 10, only about 6% worse than Phase 1 to 5. Keep it unless you are hunting Black with a deep stockpile.`
+             : `Line ${l.i+1} is at Tier ${l.tier}, the worst place to roll from. Take the next Phase 1 to 5 roll (about 2 rolls), then keep going.`;
+  return ` <span class="warn">Target ${goalLabel(l.effect)}. ${seat} Accept only Tier ${g}+; a Tier 6 to 11 value makes the next roll worse. If you stop early, take the best value offered. About ${Math.round(rolls)} resets from here (about ${rocks} modules at ${rerollCost(lockedCount)} per roll).</span>`;
+}
+
 /* ============================ ANALYSIS ============================ */
 function classifyLine(l){
   if(!l.effect) return {empty:true, locked:l.locked};
   const eff=EFFECTS[l.effect];
   const val=eff.vals[l.tier-1];
-  const meets = eff.min<=0 ? true : val>=eff.min;
+  const meets = val>=goalVal(l.effect);   // goal-aware: minimum, Blue+ or Black per the value-goal setting
   return {empty:false, effect:l.effect, tier:l.tier, val, meets,
           bb:l.tier>=12, locked:l.locked};
 }
@@ -339,7 +405,31 @@ function rerollCost(locked){ return [1,2,3,4][Math.min(locked,3)]; }
 function lockCost(locked){ return [2,3,4,4][Math.min(locked,3)]; }
 
 /* Core recommender — returns the single best next action */
+// TEMP-LOCK MODE: every permanent-lock step becomes "hold it with a temp lock this roll" plus
+// the action that follows (keys, no rocks). Implemented by virtually locking the line and
+// asking the core engine what comes next — chained when two lines need holding.
 function recommend(piece){
+  const rec=recommendCore(piece);
+  if(!state.tempLocks) return rec;
+  const held=[], saved=[]; let cur=rec;
+  while(cur && held.length<2){
+    const m=(cur.title||'').replace(/<[^>]+>/g,'').match(/^🔒 Lock Line (\d)/); if(!m) break;
+    const i=+m[1]-1, l=state.pieces[piece][i]; if(!l||l.locked||held.includes(i)) break;
+    saved.push(l); l.locked=true; held.push(i);
+    cur=recommendCore(piece);
+  }
+  saved.forEach(l=>l.locked=false);
+  if(!held.length) return rec;
+  const nPerm=state.pieces[piece].filter(l=>l.locked).length;
+  let keys=0; held.forEach((_,j)=>keys+=10*(nPerm+j+1)+10);
+  const names=held.map(i=>'Line '+(i+1)).join(' + ');
+  return Object.assign({},cur,{
+    risk:cur.risk||rec.risk, a:rec.a,
+    title:`🔑 Temp-lock ${names} (${keys} keys this roll) + ${cur.title}`,
+    body:`Temp-lock ${names} each roll instead of a permanent lock. Use "load previous lock settings" to reapply it. Then: ${cur.body||''}`,
+    cost:`${cur.cost?cur.cost+' · ':''}+ ${keys} keys per roll`});
+}
+function recommendCore(piece){
   const a=analyze(piece);
   const {desired,N,lines,desiredLines,goodLines,distinctGood,lockedCount,missing}=a;
 
@@ -349,8 +439,8 @@ function recommend(piece){
 
   // DONE
   if(distinctGood.size>=N)
-    return {risk:'done',title:'✅ This piece is finished — stop rerolling',
-      body:`You have ${N} desired effect${N>1?'s':''} above the minimum value. Don't reroll further (you'd risk losing them). Locking the remaining good lines is optional now; unlocking never refunds modules.`,
+    return {risk:'done',title:'✅ This piece is finished',
+      body:`All ${N} wanted effect${N>1?'s are':' is'} at target. Stop rolling this piece. Locking the remaining lines is optional.`,
       progress:100,a};
 
   const unlocked=lines.filter(l=>!l.locked);
@@ -362,24 +452,24 @@ function recommend(piece){
   if(N===1){
     const low=desiredLines.find(l=>!l.meets && !l.locked);
     if(low){
-      const mt=minTier(low.effect), mv=EFFECTS[low.effect].vals[mt-1];
+      const mt=goalTier(low.effect), mv=goalVal(low.effect);
       return {risk:'green',
-        title:`🎯 Reset Attributes — raise Line ${low.i+1} ${low.effect} to ≥ ${mv}% (Tier ${mt}+)`,
-        body:`You already have your target — it's just below the ${mv}% minimum. Press <b>Reset Attributes</b> until Line ${low.i+1} reaches Tier ${mt}+. No locking needed in Category 1. (Reset changes only the %, never the type.)`,
-        cost:`Reset ≈ ${rerollCost(lockedCount)} module(s) each`, progress:prog(a), a};
+        title:`🎯 Reset Attributes until Line ${low.i+1} ${low.effect} reaches ${mv}% (Tier ${mt}+)`,
+        body:`The effect is on the piece but below your target. Press <b>Reset Attributes</b> until it reaches Tier ${mt}+. No lock needed with one target.${seatNote(low,lockedCount)}`,
+        cost:`Reset ≈ ${rerollCost(lockedCount)} modules each`, progress:prog(a), a};
     }
     const stuck=desiredLines.find(l=>!l.meets && l.locked);
     if(stuck){
-      const mt=minTier(stuck.effect), mv=EFFECTS[stuck.effect].vals[mt-1];
+      const mt=goalTier(stuck.effect), mv=goalVal(stuck.effect);
       return {risk:'orange',
-        title:`⚠️ Line ${stuck.i+1} ${stuck.effect} is locked below the minimum (${stuck.val}% < ${mv}%)`,
-        body:`A locked line keeps both its effect and its value — Reset Attributes can't touch it, and since each stat type can appear only once per gear, Change Effects can't roll a second ${stuck.effect} either. Your options: <b>unlock it</b> (spent modules are NOT refunded) and then Reset Attributes to Tier ${mt}+, or accept the low value (it counts as ~0.5× of the effect).`,
+        title:`⚠️ Line ${stuck.i+1} ${stuck.effect} is locked below your target (${stuck.val}% < ${mv}%)`,
+        body:`Unlock it (free; the modules spent on the lock are not refunded), then Reset Attributes until it reaches Tier ${mt}+. Or keep the low value, which counts as about half an effect.`,
         progress:prog(a), a};
     }
     return {risk:'green',
-      title:`🔁 Change Effects until you get ${desired.join(' or ')} on any line`,
-      body:`Category 1 target: one <b>${desired.join(' / ')}</b> line. Press <b>Change Effects</b> (don't lock anything) until it appears on any of the 3 lines, then reset its value if it's below the minimum.`,
-      cost:`Change ≈ ${rerollCost(lockedCount)} module(s) each`, progress:prog(a), a};
+      title:`🔁 Change Effects until ${desired.join(' or ')} lands on any line`,
+      body:`Press <b>Change Effects</b> with nothing locked until <b>${desired.join(' / ')}</b> appears on any line. Then reset its value if needed.`,
+      cost:`Change ≈ ${rerollCost(lockedCount)} modules each`, progress:prog(a), a};
   }
 
   // ===== CATEGORY 2 & 3 — per-line branching, straight from the flowchart =====
@@ -392,13 +482,16 @@ function recommend(piece){
   //    Line 2/3 — its "Is Line 1 Blue/Black?" check lives inside the two-effects branch, so a
   //    lone Blue/Black on Line 1 with nothing on Line 2/3 keeps fishing instead.
   const bbUnlocked=desiredLines.filter(l=>l.bb && !l.locked)
-    .filter(l=> l.i>0 || N===2 || anyOn23)
+    // a lone Line-1 rare roll is normally churned (Cat 3) — unless it already sits at a
+    // Blue/Black TARGET: re-finding that value costs ~22–264 resets, far more than the
+    // ~27-rock penalty of fishing Lines 2/3 with one lock in place
+    .filter(l=> l.i>0 || N===2 || anyOn23 || (l.meets && goalTier(l.effect)>=12))
     .sort((x,y)=> x.i-y.i);
   if(bbUnlocked.length){
     const x=bbUnlocked[0];
     return {risk:x.i===0?'red':riskByLocks,
-      title:`🔒 Lock Line ${x.i+1} — rare ${tierWord(x.tier)} ${x.effect} (${x.val}%, Tier ${x.tier})`,
-      body:`A ${tierWord(x.tier)} line (Tier ${x.tier}) is too rare to risk losing — lock it with a Custom Module.${x.i===0?` It's on Line 1, normally a poor line to lock, but a ${tierWord(x.tier)} roll is worth committing to (this is the chart's highest-risk path).`:''}`,
+      title:`🔒 Lock Line ${x.i+1}: ${tierWord(x.tier)} ${x.effect} (${x.val}%, Tier ${x.tier})`,
+      body:`A ${tierWord(x.tier)} line is too rare to risk. Lock it.${x.i===0?` Locking Line 1 is usually a bad idea, but a ${tierWord(x.tier)} roll is worth it.`:''}`,
       cost:`Lock ≈ ${lockCost(lockedCount)} modules`, progress:prog(a), a};
   }
 
@@ -410,47 +503,30 @@ function recommend(piece){
   const misplacedL1=desiredLines.find(l=>l.i===0 && !l.bb && !l.locked);
   if(misplacedL1 && !anyOn23){
     return {risk:riskByLocks,
-      title:`🔁 Change Effects — your only target is on Line 1; get ${desired.join(' / ')} onto Line 2/3`,
-      body:`Line 1 has ${misplacedL1.effect}, but Line 1 is the 100% line you fill <b>last</b> — a lone target there is on the wrong line. Press <b>Change Effects</b> (keep everything unlocked, cheapest) until a target lands on <b>Line 2 or Line 3</b>, then lock that. Tip: if you want to keep this exact Line 1 roll, temporarily Custom-Lock Line 1 so only the other lines reroll.`,
-      cost:`Change ≈ ${rerollCost(lockedCount)} module(s) each`, progress:prog(a), a};
+      title:`🔁 Change Effects until a target lands on Line 2 or 3`,
+      body:`Your only target is on Line 1, which always rolls something and is filled last. Keep everything unlocked and press <b>Change Effects</b> until ${desired.join(' / ')} lands on <b>Line 2 or 3</b>, then lock that line. To keep this exact Line 1 roll, temp-lock Line 1 so only the other lines reroll.`,
+      cost:`Change ≈ ${rerollCost(lockedCount)} modules each`, progress:prog(a), a};
   }
 
-  // 1b) Cat 3 blue path — targets on BOTH Line 2 & 3 with either below min:
-  //     chart says "Lock both Line 2 and Line 3 AFTER both of them reach adequate values",
-  //     so raise both at the cheap unlocked reroll price BEFORE locking either.
-  if(N===3){
-    const t2=desiredLines.find(l=>l.i===1 && !l.locked), t3=desiredLines.find(l=>l.i===2 && !l.locked);
-    if(t2 && t3 && (!t2.meets || !t3.meets)){
-      const lows=[t2,t3].filter(l=>!l.meets).map(l=>`Line ${l.i+1} ${l.effect} to ≥ ${EFFECTS[l.effect].vals[minTier(l.effect)-1]}% (Tier ${minTier(l.effect)}+)`);
-      const goodOne=[t2,t3].find(l=>l.meets);
-      return {risk:riskByLocks,
-        title:`🎯 Reset Attributes — get ${lows.join(' and ')}, then lock both Lines 2 & 3`,
-        body:`You have targets on both Line 2 and Line 3 — the chart's least-risk path. Press <b>Reset Attributes</b> (cheap while nothing is locked) until <b>both</b> lines meet their minimums, then lock both and fish Line 1 for the last effect.${goodOne?` <span class="warn">Careful: resets reroll every unlocked line's value, so Line ${goodOne.i+1}'s good ${goodOne.effect} can drop — temporarily Custom-Lock it if you'd rather protect it.</span>`:''}`,
-        cost:`Reset ≈ ${rerollCost(lockedCount)} module(s) each`, progress:prog(a), a};
-    }
-  }
+  // (the chart's "raise both Line 2 & 3, then lock both" path is gone: values are now
+  //  rerolled all together at the end — see the VALUE STAGE below)
 
-  // 2) Lock a ready target: Line 3 always (rarest slot); Line 2 only once you hold N-1 targets.
+  // 2) EFFECT PHASE — lock a landed target at WHATEVER value it rolled: Line 3 on sight
+  //    (rarest slot); Line 2 once you hold N-1 targets. Values get rerolled all together
+  //    once every effect is on the piece (unlocking is free), so raising a value before
+  //    locking only spends rocks at a worse price.
   const shouldLock=l=> l.i===2 || (l.i===1 && presentCount>=N-1);
-  const lockNow=goodLines.filter(l=>!l.locked && shouldLock(l)).sort(byLine3First);
+  const lockNow=(presentCount<N?desiredLines:[]).filter(l=>!l.locked && shouldLock(l)).sort(byLine3First);
   if(lockNow.length){
     const x=lockNow[0];
-    const why = x.i===2 ? `on Line 3, the rarest slot (30% to appear) — a hit here is hard to get back, so secure it now`
-                        : `on a good line, and you now hold enough targets to commit`;
+    const why = x.i===2 ? `on Line 3, the rarest line (30% to appear)`
+                        : `on Line 2 and you now hold enough targets to commit`;
     return {risk:riskByLocks,
-      title:`🔒 Lock Line ${x.i+1} — ${x.effect} (${x.val}%, Tier ${x.tier})`,
-      body:`This target is ${why}. Lock it with a Custom Module, then keep going. Tip: a temporary Custom Lock is cheaper if you'll batch value resets later.`,
+      title:`🔒 Lock Line ${x.i+1}: ${x.effect} (${x.val}%, Tier ${x.tier})`,
+      body:`This target is ${why}. Lock it now at any value${x.meets?'':'; values are rerolled together once every effect is on the piece'}. Then keep fishing.`,
       cost:`Lock ≈ ${lockCost(lockedCount)} modules`, progress:prog(a), a};
   }
-  // 3) Raise a should-lock target that's below min (so it can then be locked)
-  const raise=desiredLines.filter(l=>!l.meets && !l.locked && shouldLock(l)).sort(byLine3First);
-  if(raise.length){
-    const x=raise[0], mt=minTier(x.effect), mv=EFFECTS[x.effect].vals[mt-1];
-    return {risk:riskByLocks,
-      title:`🎯 Reset Attributes — push Line ${x.i+1} ${x.effect} to ≥ ${mv}% (Tier ${mt}+)`,
-      body:`${x.effect} on Line ${x.i+1}${x.i===2?' (Line 3 — the rarest slot, worth securing)':''} is Tier ${x.tier} (${x.val}%), below the ${mv}% minimum. Press <b>Reset Attributes</b> until it reaches Tier ${mt}+, then lock it. (Reset changes only the %, never the type.)`,
-      cost:`Reset ≈ ${rerollCost(lockedCount)} module(s) each`, progress:prog(a), a};
-  }
+  // (no "raise before locking" step any more — see the VALUE STAGE below)
   // 4) All should-lock targets are secured. Fish for a still-missing type, or polish the last values.
   if(presentCount < N){
     const onlyL1 = unlocked.length===1 && unlocked[0].i===0;
@@ -458,22 +534,44 @@ function recommend(piece){
     // With locks in place, name the actual free lines (chart: "…on Line 1 or Line 2" once L3 is locked);
     // with nothing locked yet, the chart wants targets specifically on Line 2/3.
     const freeTxt = lockedCount>0 ? unlocked.map(l=>'Line '+(l.i+1)).join(' / ') : 'Line 2 / 3';
-    const where = onlyL1 ? 'Line 1 (the only free line — it rolls 100% of the time, so this is quick)' : freeTxt;
+    const where = onlyL1 ? 'Line 1 (the only free line; it always rolls, so this is quick)' : freeTxt;
     const bbL1=desiredLines.find(l=>l.i===0 && l.bb && !l.locked);
-    const bbNote=bbL1?` <span class="warn">Heads-up: your ${tierWord(bbL1.tier)} ${bbL1.effect} on Line 1 will reroll too — the chart accepts losing it here, but you can temporarily Custom-Lock Line 1 to protect it while fishing.</span>`:'';
+    const bbNote=bbL1?` <span class="warn">Your ${tierWord(bbL1.tier)} ${bbL1.effect} on Line 1 will reroll too. To keep it while fishing, temp-lock Line 1.</span>`:'';
+    const absent=desired.filter(e=>!desiredLines.some(l=>l.effect===e));
     return {risk:riskByLocks,
-      title:`🔁 Change Effects until you get ${haveSome?'another target':'a target'} (${missing.join(' / ')}) on ${onlyL1?'Line 1':freeTxt}`,
-      body:`${haveSome?`You have ${presentCount} target${presentCount>1?'s':''} showing so far. `:''}Press <b>Change Effects</b> until one of <b>${missing.join(', ')}</b> lands on ${where}. Keep the free lines unlocked — that's the cheapest way to fish. Then reset its value if it's below the minimum.${bbNote}`,
-      cost:`Change ≈ ${rerollCost(lockedCount)} module(s) each`, progress:prog(a), a};
+      title:`🔁 Change Effects until ${absent.join(' / ')} lands on ${onlyL1?'Line 1':freeTxt}`,
+      body:`Press <b>Change Effects</b> until <b>${absent.join(' or ')}</b> lands on ${where}. Keep the free lines unlocked. When it lands, lock it at any value; values are rerolled together at the end.${bbNote}`,
+      cost:`Change ≈ ${rerollCost(lockedCount)} modules each`, progress:prog(a), a};
   }
-  // 5) All N types present — raise any remaining below-min line (usually the last one on Line 1)
-  const finish=desiredLines.find(l=>!l.meets && !l.locked);
-  if(finish){
-    const mt=minTier(finish.effect), mv=EFFECTS[finish.effect].vals[mt-1];
+  // 5) VALUE STAGE — every effect is on the piece. Protect lines already at target, unlock
+  //    below-target locked lines (free), then reroll values with ALL of them in play — each
+  //    reset rolls every unlocked line at once — locking each line the moment it hits.
+  const below=desiredLines.filter(l=>!l.meets);
+  if(below.length){
+    const protectL=desiredLines.filter(l=>l.meets && !l.locked).sort(byLine3First);
+    if(protectL.length){
+      const x=protectL[0];
+      return {risk:riskByLocks,
+        title:`🔒 Lock Line ${x.i+1}: ${x.effect} is at target (${x.val}%)`,
+        body:`Lock it so the value rerolls for ${below.map(l=>'Line '+(l.i+1)).join(' / ')} cannot change it.`,
+        cost:`Lock ≈ ${lockCost(lockedCount)} modules`, progress:prog(a), a};
+    }
+    const belowLocked=below.filter(l=>l.locked);
+    if(belowLocked.length){
+      const names=belowLocked.map(l=>`Line ${l.i+1} ${l.effect}`).join(' and ');
+      const after=lockedCount-belowLocked.length;
+      return {risk:'green',
+        title:`🔓 Unlock ${names} (free)`,
+        body:`${belowLocked.length>1?'These lines are':'It is'} below target. Unlocking is free; the modules already spent are not refunded. With every below-target line unlocked, each reset rolls them all at once and costs ${rerollCost(after)} module${rerollCost(after)>1?'s':''} instead of ${rerollCost(lockedCount)}.`,
+        cost:'Unlock: free', progress:prog(a), a};
+    }
+    const list=below.map(l=>`Line ${l.i+1} ${l.effect} → ${goalVal(l.effect)}% (Tier ${goalTier(l.effect)}+)`).join(' · ');
+    const multi=below.length>1;
     return {risk:riskByLocks,
-      title:`🎯 Reset Attributes — finish Line ${finish.i+1} ${finish.effect} to ≥ ${mv}% (Tier ${mt}+)`,
-      body:`All ${N} targets are on the piece — just push Line ${finish.i+1}'s ${finish.effect} up to the ${mv}% minimum and you're done. (Reset changes only the %, never the type.)`,
-      cost:`Reset ≈ ${rerollCost(lockedCount)} module(s) each`, progress:prog(a), a};
+      title:multi?`🎯 Reset Attributes until ${below.map(l=>'Line '+(l.i+1)).join(' or ')} reaches its target, then lock that line`
+                 :`🎯 Reset Attributes until Line ${below[0].i+1} ${below[0].effect} reaches ${goalVal(below[0].effect)}% (Tier ${goalTier(below[0].effect)}+)`,
+      body:`${list}. ${multi?'Each reset rolls every unlocked line at once. Keep the roll when any line reaches its target, lock that line, and continue with the rest.':'Keep the roll when it reaches the target.'}${below.map(l=>seatNote(l,lockedCount)).join('')}`,
+      cost:`Reset ≈ ${rerollCost(lockedCount)} modules each`, progress:prog(a), a};
   }
   return {risk:'done',title:'✅ This piece meets your target',body:'Nothing left to do on this piece.',progress:100,a};
 }
@@ -490,11 +588,20 @@ function renderEffGrid(){
   const g=document.getElementById('effGrid'); g.innerHTML='';
   EFF_NAMES.forEach(e=>{
     const sel=state.roles[e]||'Off';
-    const node=h(`<div class="eff"><span>${e} <small>min ${EFFECTS[e].min>0?EFFECTS[e].min+'%':'—'}</small></span></div>`);
+    const node=h(`<div class="eff"><span>${e}</span></div>`);
     const s=document.createElement('select');
     ['Off','Target','Passable'].forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=r;if(r===sel)o.selected=true;s.appendChild(o);});
-    s.onchange=()=>{ if(s.value==='Off') delete state.roles[e]; else state.roles[e]=s.value; syncN(); save(); renderAll(); };
-    node.appendChild(s); g.appendChild(node);
+    s.onchange=()=>{ if(s.value==='Off') delete state.roles[e]; else state.roles[e]=s.value; syncN(); save(); renderEffGrid(); renderAll(); };
+    node.appendChild(s);
+    // per-effect minimum acceptable tier (user's choice; Prydwen's minimum by default)
+    if(state.roles[e]==='Target'){
+      const gsel=document.createElement('select'); gsel.title='Minimum acceptable value. Prydwen\'s minimum by default.';
+      const base=minTier(e);
+      for(let t=1;t<=15;t++){ const o=document.createElement('option'); o.value=t; o.textContent=`≥ T${t} · ${EFFECTS[e].vals[t-1]}%${t===base?' (Prydwen min)':(t>=15?' Black':(t>=12?' Blue':''))}`; o.className=tierClass(t); if(t===goalTier(e)) o.selected=true; gsel.appendChild(o); }
+      gsel.onchange=()=>{ if(!state.goalTierBy) state.goalTierBy={}; const t=+gsel.value; if(t===minTier(e)) delete state.goalTierBy[e]; else state.goalTierBy[e]=t; save(); renderAll(); };
+      const row=h('<div class="tierrow"><span>min value</span></div>'); row.appendChild(gsel); node.appendChild(row);
+    } else node.appendChild(h(`<div class="tierrow off"><span>min value</span><span>Prydwen ${EFFECTS[e].min>0?EFFECTS[e].min+'%':'—'} · set a target once marked</span></div>`));
+    g.appendChild(node);
   });
 }
 function syncN(){
@@ -505,19 +612,27 @@ function syncN(){
   const sel=document.getElementById('targetN'); sel.innerHTML='';
   for(let i=1;i<=3;i++){const o=document.createElement('option');o.value=i;o.textContent=i;sel.appendChild(o);}
   sel.value=state.N;
-  const cat={1:'Category 1 — 1 effect',2:'Category 2 — 2 effects',3:'Category 3 — 3 effects'}[state.N];
-  const note=(d&&d<state.N)?` (only ${d} Target${d>1?'s':''} marked — advice aims for ${d} until you mark more)`:'';
+  const cat={1:'Category 1: 1 effect',2:'Category 2: 2 effects',3:'Category 3: 3 effects'}[state.N];
+  const note=(d&&d<state.N)?` (${d} Target${d>1?'s':''} marked, so the advice aims for ${d} until you mark more)`:'';
   document.getElementById('catLabel').textContent=(cat||'')+note;
 }
 
 function renderTabs(){
   const t=document.getElementById('pieceTabs'); t.innerHTML='';
-  PIECES.forEach(p=>{
+  const reqd=desiredSet().length>0;
+  const best=reqd?bestPiece():null;
+  // tiles in the game's screen order: Head top left, Body top right, Arm bottom left, Leg bottom right
+  ['Head','Body','Arm','Leg'].forEach(p=>{
     const a=analyze(p); const rec=recommend(p);
     const color = rec.risk==='done'?'var(--accent2)':(rec.risk==='red'?'var(--red)':(rec.risk==='orange'?'var(--orange)':'var(--green)'));
-    const tab=h(`<div class="tab ${p===state.active?'active':''}">${p}<span class="dot" style="background:${color}"></span></div>`);
-    tab.onclick=()=>{state.active=p;save();renderAll();};
-    t.appendChild(tab);
+    const isNext=!!(best&&best.need>0&&best.p===p);
+    let sub='', ok=false;
+    if(reqd){ if(rec.risk==='done'){ sub='✓ done'; ok=true; } else sub=`${Math.min(a.distinctGood.size,a.N)} / ${a.N} secured`; }
+    const tile=document.createElement('div');
+    tile.className='ptile'+(p===state.active?' active':'')+(isNext?' hasnext':'');
+    tile.innerHTML=`<div class="name">${p}</div><div class="sub ${ok?'ok':'muted'}">${sub}</div>${isNext?'<span class="next">NEXT</span>':''}`;
+    tile.onclick=()=>{state.active=p;save();renderAll();};
+    t.appendChild(tile);
   });
 }
 
@@ -564,7 +679,8 @@ function renderLineEditors(){
       if(cl.empty) bg='<span class="badge b-other">empty</span>';
       else{
         const isD=aAct.desired.includes(cl.effect), isP=passS.includes(cl.effect);
-        if(isD) bg+=cl.meets?'<span class="badge b-good">desired &middot; meets min</span>':'<span class="badge b-low">desired &middot; below min</span>';
+        const gm=goalTier(cl.effect)!==minTier(cl.effect);
+        if(isD) bg+=cl.meets?`<span class="badge b-good">desired &middot; ${gm?'at goal':'meets min'}</span>`:`<span class="badge b-low">desired &middot; ${gm?'below goal':'below min'}</span>`;
         else if(isP) bg+='<span class="badge b-other">passable bonus</span>';
         else bg+='<span class="badge b-other">not wanted</span>';
         if(cl.tier>=15) bg+=' <span class="badge b-black">Black T15</span>';
@@ -590,20 +706,13 @@ function renderAdvice(){
   adv.appendChild(step);
   if(whyItems.length)
     adv.appendChild(h(`<details class="why"><summary>Why &amp; alternatives</summary><div class="wb">${whyItems.map(w=>`<div>${w}</div>`).join('')}</div></details>`));
-  document.getElementById('progBar').style.width=(rec.progress||0)+'%';
   const a=rec.a;
-  if(a) document.getElementById('progText').textContent=`Secured ${Math.min(a.distinctGood.size,a.N)} / ${a.N} desired effect${a.N>1?'s':''} on this piece.`;
-  else document.getElementById('progText').textContent='';
-  document.getElementById('pieceMeta').textContent = a?`${a.lockedCount} line(s) locked`:'';
+  document.getElementById('pieceMeta').textContent = a?`${a.lockedCount} locked · ${Math.min(a.distinctGood.size,a.N)} / ${a.N} secured`:'';
 }
 function riskLabel(r){return {green:'Low risk / cheap',orange:'Medium risk',red:'Higher cost / risk',done:'Complete'}[r]||'';}
 
-function renderBanner(){
-  const desired=desiredSet();
-  const card=document.getElementById('bannerCard');
-  if(desired.length===0){card.style.display='none';return;}
-  card.style.display='block';
-  // pick piece with most 'need'; tie -> overload order Head>Arm>Body>Leg
+// pick piece with most 'need'; tie -> overload order Head>Arm>Body>Leg
+function bestPiece(){
   let best=null;
   PIECES.forEach(p=>{
     const a=analyze(p);
@@ -613,12 +722,22 @@ function renderBanner(){
     const score = need*10 + (hasAny?0:3);
     if(!best || score>best.score) best={p,score,need};
   });
+  return best;
+}
+function renderBanner(){
+  const desired=desiredSet();
+  const card=document.getElementById('bannerCard');
+  if(desired.length===0){card.style.display='none';return;}
+  card.style.display='block';
+  const best=bestPiece();
   const b=document.getElementById('banner');
+  b.classList.toggle('ok', best.need<=0);
   if(best.need<=0){
-    b.innerHTML=`🎉 <b>All four pieces meet your target.</b> You're done with this unit (within your Category ${state.N} goal).`;
+    b.innerHTML=`<span class="txt">All four pieces meet your target.</span>`;
+  }else if(best.p===state.active){
+    b.innerHTML=`<span class="txt"><b>${best.p}</b> is the piece to work on. It is furthest from your goal.</span>`;
   }else{
-    b.innerHTML=`👉 <b>Work on: ${best.p}</b> next — it's furthest from your goal. `+
-      `<span class="muted">Start rerolling on the piece with the fewest desired lines; a piece with none of your effects is the cheapest place to begin.</span>`;
+    b.innerHTML=`<span class="txt">Work on <b>${best.p}</b> next. It is furthest from your goal.</span><button class="btn-primary" onclick="state.active='${best.p}';save();renderAll()">Switch to ${best.p}</button>`;
   }
 }
 
@@ -638,11 +757,11 @@ function renderTotals(){
   // one-line digest in the collapsed summary
   const dig=document.getElementById('totalsDigest');
   if(dig) dig.textContent=desired.length
-    ? desired.map(e=>{const g=agg[e]||{total:0};return `${EFF_ABBR[e]||e} ${parseFloat(g.total.toFixed(1))}%`;}).join(' · ')+' — click for the full table'
+    ? desired.map(e=>{const g=agg[e]||{total:0};return `${EFF_ABBR[e]||e} ${parseFloat(g.total.toFixed(1))}%`;}).join(' · ')+' · click for the table'
     : 'nothing entered yet';
   // show marked effects (even at 0 rolls, so gaps are visible) plus anything rolled
   const rows=EFF_NAMES.filter(e=>desired.includes(e)||pass.includes(e)||agg[e]);
-  if(!rows.length){ box.innerHTML='<span class="muted">Nothing entered yet — mark targets and fill in your pieces above.</span>'; return; }
+  if(!rows.length){ box.innerHTML='<span class="muted">Nothing entered yet. Mark targets and fill in your pieces.</span>'; return; }
   let html='<div style="overflow-x:auto"><table style="max-width:820px"><tr><th style="text-align:left">Effect</th><th>Rolls</th><th>Total %</th><th>Counts as</th><th style="text-align:left">Where</th></tr>';
   rows.forEach(e=>{
     const a=agg[e]||{total:0,count:0,x:0,chips:[]};
@@ -653,9 +772,35 @@ function renderTotals(){
   box.innerHTML=html+'</table></div>';
 }
 
+function applyGoalPreset(p){
+  if(!state.goalTierBy) state.goalTierBy={};
+  desiredSet().forEach(e=>{ if(p==='blue') state.goalTierBy[e]=Math.max(12,minTier(e)); else if(p==='black') state.goalTierBy[e]=15; else if(p==='prydwen') delete state.goalTierBy[e]; });
+}
+function goalPreset(){
+  const effs=desiredSet(); if(!effs.length) return 'prydwen';
+  const kinds=new Set(effs.map(goalKind)); if(kinds.size!==1) return 'custom';
+  const k=[...kinds][0]; return k==='min'?'prydwen':k;
+}
+function renderGoalUI(){
+  const sel=document.getElementById('valGoal');
+  if(sel){
+    sel.value=goalPreset();
+    if(!sel._wired){ sel._wired=true; sel.onchange=()=>{ if(sel.value!=='custom') applyGoalPreset(sel.value); save(); renderEffGrid(); renderAll(); }; }
+  }
+  const lm=document.getElementById('lockMode');
+  if(lm){
+    lm.querySelectorAll('button').forEach(b=>b.classList.toggle('active',(b.dataset.mode==='temp')===!!state.tempLocks));
+    if(!lm._wired){ lm._wired=true; lm.addEventListener('click',ev=>{ const b=ev.target.closest('button[data-mode]'); if(!b) return; state.tempLocks=b.dataset.mode==='temp'; save(); renderAll(); }); }
+  }
+  const chips=document.getElementById('tgtChips');
+  const diff=desiredSet().filter(e=>goalTier(e)!==minTier(e));
+  if(chips && diff.length)
+    chips.appendChild(h(`<span class="badge b-blue" title="Value targets that differ from Prydwen's minimums"> 🎯 ${diff.map(e=>`${EFF_ABBR[e]||e} T${goalTier(e)}+`).join(' · ')}</span>`));
+}
 function renderAll(){
   syncN();
   renderTgtChips();
+  renderGoalUI();
   renderTabs();
   renderLineEditors();
   renderAdvice();
