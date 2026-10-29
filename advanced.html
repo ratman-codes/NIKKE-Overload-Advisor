@@ -46,7 +46,7 @@
   .ptile.hasnext .name{padding-right:46px}
   .badge{white-space:nowrap}
   @media (max-width:1000px){ .side .linerow{grid-template-columns:52px minmax(120px,1.2fr) 140px 78px} .side .lbadges{grid-column:1/-1;justify-content:flex-start} }
-  @media (max-width:600px){ .side{grid-template-columns:1fr} }
+  @media (max-width:600px){ .side{grid-template-columns:minmax(0,1fr)} .side>*{min-width:0} .side .linerow{grid-template-columns:44px minmax(0,1fr) minmax(0,1fr) 70px} .side .linerow select{width:100%;min-width:0} }
   table{border-collapse:collapse;width:100%;font-size:12.5px}
   th,td{border:1px solid var(--line);padding:4px 6px;text-align:center}
   th{background:var(--panel2);color:var(--muted);font-weight:600}
@@ -195,7 +195,23 @@
   .unitprog .bar2 i{display:block;height:100%;background:var(--green)}
   .riskline{margin-top:8px;color:#ff8a80;font-size:13px;font-weight:600}
   .secured{margin-top:6px;font-size:13px;color:#5fd67a}
-  @media (max-width:680px){ .reqtbl .share{min-width:70px} }
+  /* phones: each requirement row becomes two lines (name · ×count · ✕ / share · min value) so the table never scrolls sideways */
+  @media (max-width:680px){
+    .reqtbl,.reqtbl tbody{display:block}
+    .reqtbl tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 30px;column-gap:8px;row-gap:4px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
+    .reqtbl tr:first-child{border-top:none}
+    .reqtbl td{display:block;border:none;padding:0;min-width:0}
+    .reqtbl td:nth-child(1){grid-column:1;grid-row:1}
+    .reqtbl td:nth-child(2){grid-column:2;grid-row:1}
+    .reqtbl td:nth-child(5){grid-column:3;grid-row:1}
+    .reqtbl td:nth-child(3){grid-column:1;grid-row:2}
+    .reqtbl td:nth-child(4){grid-column:2/4;grid-row:2;display:flex;align-items:center;gap:4px}
+    .reqtbl td select{width:100%;max-width:100%;min-width:0}
+    .reqtbl .name{white-space:normal}
+    .reqtbl .sharecell .share{width:56px}
+    .reqtbl .passrow td:nth-child(3){grid-column:1/4;grid-row:2}
+    .reqtbl .passrow td:nth-child(4){grid-column:3;grid-row:1;display:block}
+  }
   /* declutter layout */
   .warnline{display:flex;gap:6px;align-items:baseline;border:1px solid #4a3714;background:linear-gradient(90deg,var(--orangebg),var(--panel) 60%);border-radius:10px;padding:8px 13px;font-size:13px;margin-bottom:18px}
   .coststrip{display:flex;gap:20px;align-items:center;flex-wrap:wrap;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:7px 14px;margin-top:12px;font-size:12.5px}
@@ -211,9 +227,9 @@
   #reqPanel{margin-bottom:0}
   .card:has(#reqPanel){padding-bottom:8px}
   .why .wb{display:grid;gap:7px;margin-top:8px;color:var(--muted)}
-  @media (max-width:680px){ .linerow{grid-template-columns:44px 1fr 1fr 70px} .lbadges{grid-column:1/-1;justify-content:flex-start} }
+  @media (max-width:680px){ .linerow{grid-template-columns:44px minmax(0,1fr) minmax(0,1fr) 70px} .linerow select{width:100%;min-width:0} .lbadges{grid-column:1/-1;justify-content:flex-start} }
   /* roll guide: heading-row button + popup laid out like the game's Keep / Change screen */
-  .guidebtn{border-radius:24px;padding:8px 16px;font-size:14.5px}
+  .guidebtn{border-radius:24px;padding:8px 16px;font-size:14.5px;max-width:100%;white-space:normal;text-align:center}
   .guidebtn span{font-weight:500;opacity:.85}
   .veil{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px;z-index:9}
   .gmodal{position:relative;width:min(640px,100%);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
@@ -1315,7 +1331,7 @@ function renderEffGrid(){
     const tr=document.createElement('tr'); tr.className='passrow';
     tr.innerHTML=`<td class="name"><i class="sw" style="background:${colorOf(e)};opacity:.5"></i>${e}</td><td><span class="badge b-other">passable</span></td><td colspan="2"><span class="muted" style="font-size:12px">bonus only: kept if it lands, never fished for, uses no lines</span></td><td style="width:30px"></td>`;
     const rm=h('<button class="rm" title="remove">✕</button>'); rm.onclick=()=>{ delete state.req[e]; save(); renderEffGrid(); renderAll(); };
-    tr.children[4].appendChild(rm); rows.appendChild(tr);
+    tr.children[3].appendChild(rm); rows.appendChild(tr);   // 4 cells in a passable row (the note spans two)
   });
   if(!effs.length&&!pass.length) rows.innerHTML='<tr><td class="muted">No requirements yet. Pick a preset or add an effect below.</td></tr>';
   // ---- the add bar: one click opens a picker in place ----
