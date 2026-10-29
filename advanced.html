@@ -651,6 +651,8 @@ function buildPlan(){
     // locks aren't counted, so a committed piece stays carrier (no flip-flop).
     const carryEV=q=>{
       const cls=ua.cls[q];
+      // exact marginal when the solver has both tables (cached, ~150 ms each in the background)
+      if(typeof Exact!=='undefined'){ const w=Exact.valueFor(baseMust[q].concat([e]),state.pieces[q]), b=baseMust[q].length?Exact.valueFor(baseMust[q],state.pieces[q]):0; if(w!==null&&b!==null) return w-b; }
       if(window.CARRY_SIM){   // simulator-priced marginal (cached) — see CARRY_SIM note
         return pieceCostForTargets(q,baseMust[q].concat([e]),cls)-pieceCostForTargets(q,baseMust[q],cls);
       }
@@ -926,8 +928,9 @@ function totalRemainingEV(){
       PIECES.forEach(p=>{
         const lockedNonTarget=cls[p].filter(l=>l.locked&&(l.empty||!sets[p].includes(keyOf(l.effect)))).length;
         if(sets[p].includes(e)||sets[p].length>=3-lockedNonTarget) return;
-        const withE=pieceCostForTargets(p,sets[p].concat([e]),cls[p]);
-        const marg=withE-est[p];
+        let withE=pieceCostForTargets(p,sets[p].concat([e]),cls[p]);
+        const exW=Exact.valueFor(sets[p].concat([e]),state.pieces[p]), exB=sets[p].length?Exact.valueFor(sets[p],state.pieces[p]):0;
+        const marg=(exW!==null&&exB!==null)?(exW-exB):(withE-est[p]);
         if(isFinite(marg)&&(!best||marg<best.marg)) best={p,marg,withE};
       });
       if(!best) break;
@@ -1547,6 +1550,7 @@ function classesFor(goal){
 }
 function solve(spec){
   const T=spec.targets, nT=T.length, WJ=spec.junkWeight, aJ=WJ/Math.max(1,spec.junkCount||6), temp=!!spec.tempLocks;
+  const minSlots=Math.max(1,Math.min(nT,spec.minSlots||nT));   // "any N of these targets" when smaller than nT
   const cls=T.map(t=>classesFor(t.goal));
   // line codes
   const codes=[{kind:0,tgt:-1,cls:-1,locked:0,meets:0},{kind:1,tgt:-1,cls:-1,locked:0,meets:0},{kind:1,tgt:-1,cls:-1,locked:1,meets:0}];
@@ -1580,8 +1584,8 @@ function solve(spec){
   }
   for(let s=0;s<nS;s++){
     const tri=states[s];
-    // done: every slot has a line at goal
-    let ok=true; for(let k=0;k<nT;k++){ if(!tri.some(x=>codes[x].kind===2&&codes[x].tgt===k&&codes[x].meets)) { ok=false; break; } } done[s]=ok?1:0;
+    // done: at least minSlots slots (default: all of them) have a line at goal
+    let sat=0; for(let k=0;k<nT;k++){ if(tri.some(x=>codes[x].kind===2&&codes[x].tgt===k&&codes[x].meets)) sat++; } done[s]=sat>=minSlots?1:0;
     const nl=tri.reduce((n,x)=>n+codes[x].locked,0); nlock[s]=nl;
     for(let i=0;i<3;i++){
       const cd=codes[tri[i]];
@@ -1643,15 +1647,17 @@ const Exact=(function(){
   function getWorker(){ if(worker) return worker; try{ worker=new Worker(URL.createObjectURL(new Blob([SOLVER_SRC],{type:'text/javascript'}))); }catch(e){ return null; }
     worker.onmessage=ev=>{ const r=ev.data; const p=pending.get(r.id); pending.delete(r.id); if(r.ok){ tables.set(r.id,{V:r.V,Q:r.Q,idx3:r.idx3,L:r.L,cls:r.cls,spec:p&&p.spec}); } waiters.splice(0).forEach(f=>{ try{ f(r.id); }catch(e){} }); };
     return worker; }
-  function specFor(piece){
-    const a=analyze(piece); const d=a.desired; if(!d.length) return null;
-    if(typeof a.N==='number' && a.N<d.length) return null;   // not every target is wanted here: no single goal to solve
+  // a solver spec from explicit target keys; minSlots < keys.length means "any minSlots of these"
+  function specFromKeys(d,minSlots){
+    if(!d||!d.length) return null;
     const targets=d.map(k=>({name:k,goal:goalTier(k),weight:groupMembers(k).reduce((s,e)=>s+EFF_P[e],0)}));
     const members=d.flatMap(groupMembers);
-    const spec={targets,junkWeight:Math.max(0,1-targets.reduce((s,t)=>s+t.weight,0)),junkCount:Math.max(1,EFF_NAMES.length-members.length),tempLocks:!!state.tempLocks};
+    const spec={targets,junkWeight:Math.max(0,1-targets.reduce((s,t)=>s+t.weight,0)),junkCount:Math.max(1,EFF_NAMES.length-members.length),tempLocks:!!state.tempLocks,minSlots:Math.max(1,Math.min(d.length,minSlots||d.length))};
     return {key:JSON.stringify(spec),spec};
   }
-  function ensure(piece){ const sp=specFor(piece); if(!sp) return null; if(tables.has(sp.key)) return tables.get(sp.key); if(!pending.has(sp.key)){ const w=getWorker(); if(!w) return null; pending.set(sp.key,sp); w.postMessage({id:sp.key,spec:sp.spec}); } return null; }
+  function specFor(piece){ const a=analyze(piece); return specFromKeys(a.desired,(typeof a.N==='number')?a.N:a.desired.length); }
+  function ensureSpec(sp){ if(!sp) return null; if(tables.has(sp.key)) return tables.get(sp.key); if(!pending.has(sp.key)){ const w=getWorker(); if(!w) return null; pending.set(sp.key,sp); w.postMessage({id:sp.key,spec:sp.spec}); } return null; }
+  function ensure(piece){ return ensureSpec(specFor(piece)); }
   function stateIndex(tbl,piece,lines){
     const d=tbl.spec.targets.map(t=>t.name); const L=tbl.L;
     const off=[]; let o=3; d.forEach((k,i)=>{ off[i]=o; o+=2*tbl.cls[i].length; });
@@ -1662,13 +1668,15 @@ const Exact=(function(){
   }
   // expected modules to finish `lines` of `piece` under optimal play, or null if no table yet
   function value(piece,lines){ const tbl=ensure(piece); if(!tbl) return null; const s=stateIndex(tbl,piece,lines); if(s<0) return null; const v=tbl.V[s]; return isFinite(v)&&v<1e17?v:null; }
+  // expected modules for `lines` to finish an explicit target set (all of them), or null while computing
+  function valueFor(keys,lines){ const tbl=ensureSpec(specFromKeys(keys)); if(!tbl) return null; const s=stateIndex(tbl,null,lines); if(s<0) return null; const v=tbl.V[s]; return isFinite(v)&&v<1e17?v:null; }
   function onReady(f){ waiters.push(f); }
   // 'ready' = exact table available; 'pending' = being computed (never show an estimate meanwhile);
   // 'none' = this target set is outside the model, the estimate rule answers and says so
   function status(piece){ const sp=specFor(piece); if(!sp) return 'none'; if(tables.has(sp.key)) return 'ready'; ensure(piece); return pending.has(sp.key)?'pending':'none'; }
   // Q per action for `lines` of `piece` (Infinity = not available) and the best action, or null
   function qvalues(piece,lines){ const tbl=ensure(piece); if(!tbl||!tbl.Q) return null; const s=stateIndex(tbl,piece,lines); if(s<0) return null; const Q=Array.from(tbl.Q.subarray(s*9,s*9+9)); let best=-1; for(let a=0;a<9;a++) if(isFinite(Q[a])&&(best<0||Q[a]<Q[best])) best=a; if(best<0) return null; return {Q,best}; }
-  return {value,ensure,onReady,status,qvalues};
+  return {value,valueFor,ensure,onReady,status,qvalues};
 })();
 
 /* ===== SOLVER-CHOSEN STEPS =====

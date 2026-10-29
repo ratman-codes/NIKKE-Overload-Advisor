@@ -3,15 +3,21 @@
 Everything used to audit and correct the advisor's rolling logic. Since Oct 2026 the pages
 run the solver themselves (`solver_worker.js`, embedded as a Web Worker): it picks the move for
 the piece in front of you and judges each roll in the roll guide. The hand-written rules
-remain as the wording layer and as the fallback for target sets the solver cannot model
-(fewer lines wanted than targets). A rule's move is kept when it is within 0.25 modules of the
-solver's best move, so the advice stays stable and well-worded; otherwise the solver's move is
-shown, built from the same templates, and the card carries a "✓ exact" pill either way.
+remain as the wording layer and as a fallback while a table is still computing. A rule's move
+is kept when it is within 0.25 modules of the solver's best move, so the advice stays stable
+and well-worded; otherwise the solver's move is shown, built from the same templates, and the
+card carries a "✓ exact" pill either way.
+
+The solver also covers "any N of these targets" (`minSlots` in the spec, used by the by-gear
+page when fewer lines are wanted than targets) and the whole-unit layer: on the whole-unit
+page, deciding which piece should carry a scarce effect (for example one Max Ammo across four
+pieces) uses the exact difference between that piece's cost with and without the extra target.
+Keys are not priced; they have no exchange rate in modules.
 
 | File | What it is |
 |---|---|
 | `solver.py` | Exact optimal policy for one gear piece by value iteration. `python solver.py prydwen3 blue3` writes `solved_<name>.json` (one entry per state: value, best actions, Q per action). `--temp` prices provisional locks at ~0 rocks (temp-lock mode). Scenarios are listed at the bottom of the file; add your own as `(effect, goalTier)` lists with slots (an "any of" slot is a list of several targets). |
-| `solver_worker.js` | The same solver in JavaScript, embedded in both pages (as a Web Worker) so the roll guide's Keep / Change verdict is exact. Reproduces `solver.py` to the second decimal; a target set solves in about 150 ms. When you change the model in one, change the other. |
+| `solver_worker.js` | The same solver in JavaScript, embedded in both pages (as a Web Worker) so the roll guide's Keep / Change verdict and the step shown are exact. Reproduces `solver.py` to the second decimal; a target set solves in about 150 ms. Adds `minSlots` ("any N of these targets"), which `solver.py` does not have. When you change the model in one, change the other. |
 | `walk_copy.js` | Browser-side copy walkthrough: drives simulated builds and lists every distinct string the advisor can show, for reviewing the wording as a whole. |
 | `verify.py` | Replays a solved policy in a Monte Carlo of the real game (actual effects, tiers, exclusion rule). Its mean must match the solver's value. `python verify.py prydwen3`. |
 | `eval_policy.py` | Scores a captured advisor policy inside the solved model: expected rocks from an empty piece under the advisor's actions vs the optimum. |

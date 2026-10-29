@@ -14,6 +14,7 @@ function classesFor(goal){
 }
 function solve(spec){
   const T=spec.targets, nT=T.length, WJ=spec.junkWeight, aJ=WJ/Math.max(1,spec.junkCount||6), temp=!!spec.tempLocks;
+  const minSlots=Math.max(1,Math.min(nT,spec.minSlots||nT));   // "any N of these targets" when smaller than nT
   const cls=T.map(t=>classesFor(t.goal));
   // line codes
   const codes=[{kind:0,tgt:-1,cls:-1,locked:0,meets:0},{kind:1,tgt:-1,cls:-1,locked:0,meets:0},{kind:1,tgt:-1,cls:-1,locked:1,meets:0}];
@@ -47,8 +48,8 @@ function solve(spec){
   }
   for(let s=0;s<nS;s++){
     const tri=states[s];
-    // done: every slot has a line at goal
-    let ok=true; for(let k=0;k<nT;k++){ if(!tri.some(x=>codes[x].kind===2&&codes[x].tgt===k&&codes[x].meets)) { ok=false; break; } } done[s]=ok?1:0;
+    // done: at least minSlots slots (default: all of them) have a line at goal
+    let sat=0; for(let k=0;k<nT;k++){ if(tri.some(x=>codes[x].kind===2&&codes[x].tgt===k&&codes[x].meets)) sat++; } done[s]=sat>=minSlots?1:0;
     const nl=tri.reduce((n,x)=>n+codes[x].locked,0); nlock[s]=nl;
     for(let i=0;i<3;i++){
       const cd=codes[tri[i]];
