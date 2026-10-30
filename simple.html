@@ -34,6 +34,12 @@
   .ptile.active{background:var(--accentfill);border-color:var(--accent);color:#fff}
   .ptile.active .muted{color:#dbeaff}
   .ptile .name{font-weight:700;font-size:14.5px}
+  .picon{display:inline-block;width:16px;height:16px;vertical-align:-3px;margin-right:5px;color:var(--muted)}
+  .picon svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+  .ptile.active .picon{color:#fff}
+  .ptile.done .picon{color:#5fd67a}
+  .ptile{container-type:inline-size}
+  @container (max-width:90px){ .ptile .picon{display:none} }   /* mid-width windows: the tile is too narrow for icon + name + badge */
   .ptile .sub{font-size:12px}
   .ptile .sub.ok{color:#5fd67a}
   .ptile.active .sub.ok{color:#dbeaff}
@@ -124,6 +130,7 @@
   .guidebtn:hover{background:#3a8fe0}
   .guidebtn.alt{background:var(--panel2);color:var(--text);border-color:var(--line)}
   .guidebtn.alt:hover{border-color:var(--accent)}
+  .guidebtn.idle{opacity:.7}
   .flowimg{max-width:100%;border:1px solid var(--line);border-radius:8px;margin:6px 0;display:block}
   .imgfallback{display:none;color:var(--muted);font-size:12.5px;margin:6px 0}
   .flow{display:grid;gap:6px;margin:8px 0}
@@ -135,7 +142,7 @@
   .ftag.red{background:var(--redbg);color:#ff8a80;border-color:#5a1f1c}
   .ftag.green{background:var(--greenbg);color:#5fd67a;border-color:#204a2b}
   /* declutter layout */
-  .warnline{display:flex;gap:6px;align-items:baseline;border:1px solid #4a3714;background:linear-gradient(90deg,var(--orangebg),var(--panel) 60%);border-radius:10px;padding:8px 13px;font-size:13px;margin-bottom:18px}
+  .warnline{display:flex;gap:6px;align-items:center;border:1px solid #4a3714;background:linear-gradient(90deg,var(--orangebg),var(--panel) 60%);border-radius:10px;padding:8px 13px;font-size:13px;margin-bottom:18px}
   .reqsum{cursor:pointer;padding:0}
   .reqsum::marker{color:var(--accent)}
   /* target cards: one consistent shape — row 1 = effect + role, row 2 = min value */
@@ -219,6 +226,24 @@
   .gacts .gkeep{background:#2a323d}
   .gacts .gchange{background:var(--green);border-color:var(--green);color:#fff;font-weight:700}
   .gacts button[disabled]{opacity:.45;cursor:not-allowed}
+  /* ---- how-to-use walkthrough ---- */
+  .tourbtn{margin-left:auto;flex-shrink:0;align-self:center;color:var(--accent);border-color:var(--accent);font-weight:600;white-space:nowrap}
+  .tourbtn.glow{background:var(--accentfill);color:#fff;border-color:#9ccbff;animation:tourglow 1.2s ease-in-out infinite}   /* until targets exist */
+  @keyframes tourglow{0%,100%{box-shadow:0 0 0 0 rgba(74,163,255,.9),0 0 0 0 rgba(74,163,255,.45);transform:scale(1)}
+                      50%{box-shadow:0 0 22px 8px rgba(74,163,255,.95),0 0 0 14px rgba(74,163,255,.22);transform:scale(1.07)}}
+  @media (prefers-reduced-motion:reduce){ .tourbtn.glow{animation:none;box-shadow:0 0 18px 6px rgba(74,163,255,.9)} }
+  .tour-dim{position:fixed;inset:0;z-index:900;overflow:hidden}
+  .tour-spot{position:absolute;border:2px solid var(--accent);border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,.64);pointer-events:none}
+  .tour-box{position:absolute;width:min(380px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--accent);border-radius:12px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+  .tour-box:before{content:'';position:absolute;width:14px;height:14px;background:var(--panel);border-left:1px solid var(--accent);border-top:1px solid var(--accent);transform:rotate(45deg);left:30px;top:-8px}
+  .tour-box.above:before{top:auto;bottom:-8px;transform:rotate(225deg)}
+  .tour-box.pinned:before{display:none}
+  .tour-step{font-size:12px;color:var(--accent);font-weight:700;letter-spacing:.5px}
+  .tour-box h4{margin:4px 0 6px;font-size:16px}
+  .tour-box p{margin:0 0 12px;font-size:13.5px;line-height:1.45}
+  .tour-acts{display:flex;gap:8px;align-items:center}
+  .tour-acts .skip{margin-left:auto;background:none;border:none;color:var(--muted);font-size:12.5px;padding:4px}
+  .tour-acts .next{background:var(--accentfill);border-color:var(--accentfill);color:#fff;font-weight:600}
 </style>
 </head>
 <body>
@@ -229,7 +254,7 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
   <h1>NIKKE Overload Reroll Advisor</h1>
   <p class="sub">Shows the single best next move for one gear piece: Change Effects, Reset Attributes or Lock. Set your target, enter the piece, follow the step.</p>
 
-  <div class="warnline">⚠️&nbsp;<span><b style="color:#e0a94a">Guide only. Use your own judgment.</b> Costs are averages; your luck will vary. <details style="display:inline"><summary style="display:inline;cursor:pointer;color:var(--accent)">more</summary> <span class="muted">Every step is the cheapest move by exact calculation, using the game's own reroll odds and prices. If a patch changes those, the numbers change with them. Estimates assume you follow the advice, including sitting on a low value while hunting Blue or Black. Stop when your budget says stop.</span></details></span></div>
+  <div class="warnline">⚠️&nbsp;<span><b style="color:#e0a94a">Guide only. Use your own judgment.</b> Costs are averages; your luck will vary. <details style="display:inline"><summary style="display:inline;cursor:pointer;color:var(--accent)">more</summary> <span class="muted">Every step is the cheapest move by exact calculation, using the game's own reroll odds and prices. If a patch changes those, the numbers change with them. Estimates assume you follow the advice, including sitting on a low value while hunting Blue or Black. Stop when your budget says stop.</span></details></span><button class="btn-quiet tourbtn" id="howBtn" title="A short walkthrough of the page">❔ How to use</button></div>
 
   <!-- ================= TARGETS ================= -->
   <div class="card">
@@ -262,7 +287,7 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
   <div class="card">
     <div class="h2row"><h2>2 · Enter the gear piece</h2><span class="muted" style="font-size:12.5px">Enter the piece as it looks in the game. Tick Locked on any line you have locked.</span></div>
     <div id="bannerCard" style="display:none"><div class="switchbar" id="banner"></div></div>
-    <div class="side">
+    <div class="side" id="pieceEntry">
       <div>
         <div class="pgrid" id="pieceTabs"></div>
         <button id="clearPiece" class="btn-quiet" style="margin-top:8px;width:100%">Clear this piece</button>
@@ -964,6 +989,14 @@ function syncN(){
   document.getElementById('catLabel').textContent=note;
 }
 
+// piece glyphs in the spirit of the game's overload-gear slot sprites (helmet, gauntlet, chest, boot); drawn, not copied
+const PIECE_ICON={
+  Head:'<svg viewBox="0 0 24 24"><path d="M5 14a7 7 0 0 1 14 0v4H5z"/><path d="M5 14h14"/><path d="M9 18v2M15 18v2"/></svg>',
+  Arm:'<svg viewBox="0 0 24 24"><path d="M8 3h8v7l2 2v9H8z"/><path d="M11 12v9M14 12v9"/></svg>',
+  Body:'<svg viewBox="0 0 24 24"><path d="M7 4l5 2 5-2v8c0 4-2.5 6.5-5 8-2.5-1.5-5-4-5-8z"/><path d="M12 6v14"/></svg>',
+  Leg:'<svg viewBox="0 0 24 24"><path d="M8 3h7v9l4 3v5H8z"/><path d="M8 15h7"/></svg>'
+};
+const pIcon=p=>`<span class="picon">${PIECE_ICON[p]||''}</span>`;
 function renderTabs(){
   const t=document.getElementById('pieceTabs'); t.innerHTML='';
   const reqd=desiredSet().length>0;
@@ -977,7 +1010,7 @@ function renderTabs(){
     if(reqd){ if(rec.risk==='done'){ sub='✓ done'; ok=true; } else sub=`${securedCount(p)} / ${a.N} secured`; }
     const tile=document.createElement('div');
     tile.className='ptile'+(p===state.active?' active':'')+(isNext?' hasnext':'')+(ok?' done':'');
-    tile.innerHTML=`<div class="name">${p}</div><div class="sub ${ok?'ok':'muted'}">${ok?'finished':sub}</div>${isNext?'<span class="next">NEXT</span>':''}`;
+    tile.innerHTML=`<div class="name">${pIcon(p)}${p}</div><div class="sub ${ok?'ok':'muted'}">${ok?'finished':sub}</div>${isNext?'<span class="next">NEXT</span>':''}`;
     tile.onclick=()=>{state.active=p;save();renderAll();};
     t.appendChild(tile);
   });
@@ -1247,9 +1280,16 @@ const __sess={rolls:0,mods:0};
 function guideKind(rec){ const t=(rec&&rec.title||'').replace(/<[^>]+>/g,''); if(!rec||rec.risk==='done') return null; if(/🎯/.test(t)) return 'reset'; if(/🔁/.test(t)) return 'change'; return null; }
 function setGuideButton(piece,rec){
   const b=document.getElementById('guideBtn'); if(!b) return;
-  const kind=guideKind(rec); b.style.display=kind?'':'none';
+  const kind=guideKind(rec); b.style.display=''; b.classList.toggle('idle',!kind);
   if(kind) Exact.ensure(piece);   // start the exact table early so the popup answers exactly
-  b.onclick=()=>openRollGuide(piece,kind,rec);
+  // always clickable: when there is nothing to roll yet, point at what to do instead
+  b.onclick=()=>{
+    if(desiredSet().length===0) return pointAt('#reqPanel','Set your targets first','Add the effects you want on this piece here. Then enter the piece in box 2 and come back to this button.');
+    if(rec&&rec.exact==='pending') return pointAt('#advice','One moment','Still working out the exact move. Try again in a second.');
+    if(rec&&rec.risk==='done') return pointAt('#advice','Nothing to roll','This piece is finished. Pick another piece in box 2.');
+    if(!kind) return pointAt('#advice','Nothing to roll yet','Do the move shown here first. Keep or Change only comes up on a roll, so this button helps once the move is Change Effects or Reset Attributes.');
+    openRollGuide(piece,kind,rec);
+  };
   const sc=document.getElementById('sessCount'); if(sc){ sc.style.display=__sess.rolls?'':'none'; sc.innerHTML=`<span class="muted">This session</span> <b class="cs-val">${__sess.rolls}</b><span class="muted"> rolls · </span><b class="cs-val">${__sess.mods}</b><span class="muted"> modules</span>`; }
 }
 function openRollGuide(piece,kind,rec){
@@ -1486,6 +1526,7 @@ Exact.onReady(()=>{ try{ renderAll(); }catch(e){} });
 function renderAll(){
   syncN();
   renderTgtChips();
+  if(typeof syncHowBtn==='function') syncHowBtn();
   renderGoalUI();
   renderTabs();
   renderLineEditors();
@@ -1532,6 +1573,91 @@ renderAll();
   rp.open = saved===null ? desiredSet().length===0 : saved==='1';
   rp.addEventListener('toggle',()=>localStorage.setItem('nikkeOLreqOpen',rp.open?'1':'0'));
 })();
+
+/* ===== HOW TO USE: a walkthrough that spotlights the real controls, one step at a time ===== */
+const TOUR_STEPS=[
+  {sel:'#reqPanel', title:'Set your targets',
+   text:'Add the effects you want on this piece, for example Elemental Damage, ATK and Max Ammo. "Value targets" sets the minimum value a line must reach to count. You can also set it per effect in the Min value column.', open:'#reqPanel'},
+  {sel:'#pieceEntry', title:'Enter your gear',
+   text:'This is where you tell the advisor what your gear looks like. Pick the piece you are rolling (Head, Body, Arm or Boots) and fill in its three lines, effect and value, exactly as they are in the game. Tick Locked on any locked line. You do the rolling in the game; keep this section matching your piece as you go.'},
+  {sel:'#advice', title:'Follow the recommendation',
+   text:'This card gives the single best next action: Change Effects, Reset Attributes, Lock or Unlock a line. Do that in the game.'},
+  {sel:'#pieceEntry', title:'Update your gear',
+   text:'After the action, come back and update the piece so it matches the game again. The recommendation refreshes to the next best action. Repeat steps 3 and 4 until the piece is done.'},
+  {sel:'#guideBtn', title:'Optional: Keep or Change help',
+   text:'Not sure whether to keep a roll? Press this before you choose in the game, enter the result the game is offering, and it tells you Keep or Change.', optional:true},
+];
+/* dimmed page + spotlight on one element + a callout box with an arrow; shared by the walkthrough and pointAt() */
+function spotlightUI(){
+  const dim=document.createElement('div'); dim.className='tour-dim';
+  dim.innerHTML='<div class="tour-spot"></div><div class="tour-box"></div>';
+  document.body.appendChild(dim);
+  const spot=dim.querySelector('.tour-spot'), box=dim.querySelector('.tour-box');
+  let target=null;
+  function place(){
+    if(!target) return;
+    const r=target.getBoundingClientRect(), pad=6;
+    Object.assign(spot.style,{top:(r.top-pad)+'px',left:(r.left-pad)+'px',width:(r.width+2*pad)+'px',height:(r.height+2*pad)+'px'});
+    const bw=box.offsetWidth, bh=box.offsetHeight, vw=innerWidth, vh=innerHeight;
+    let left=Math.max(16,Math.min(r.left,vw-bw-16));
+    let top=r.bottom+pad+14, mode='below';
+    if(top+bh>vh-8){
+      if(r.top-pad-14-bh>=8){ top=r.top-pad-14-bh; mode='above'; }
+      else { top=vh-bh-12; mode='pinned'; }          // tall target on a short screen: sit at the bottom edge, no arrow
+    }
+    box.classList.toggle('above',mode==='above'); box.classList.toggle('pinned',mode==='pinned');
+    Object.assign(box.style,{top:top+'px',left:left+'px'});
+  }
+  function aim(el){
+    target=el;
+    const tall=el.getBoundingClientRect().height>innerHeight*0.55;
+    el.scrollIntoView({block:tall?'start':'center',behavior:'instant'});
+    place();
+  }
+  function end(){ dim.remove(); removeEventListener('resize',place); removeEventListener('scroll',place,true); }
+  addEventListener('resize',place); addEventListener('scroll',place,true);
+  return {box,aim,end};
+}
+/* one-off pointer: spotlight an element with a short note and an OK button (used by the roll-guide button when there is nothing to roll yet) */
+function pointAt(sel,title,text){
+  if(document.querySelector('.tour-dim')) return;
+  const el=document.querySelector(sel); if(!el) return;
+  if('open' in el) el.open=true;
+  const ui=spotlightUI();
+  ui.box.innerHTML=`<h4 style="margin-top:0">${title}</h4><p>${text}</p><div class="tour-acts"><button class="next">OK</button></div>`;
+  const close=()=>{ ui.end(); removeEventListener('keydown',onKey); };
+  const onKey=e=>{ if(e.key==='Escape'||e.key==='Enter') close(); };
+  ui.box.querySelector('.next').onclick=close; addEventListener('keydown',onKey);
+  ui.aim(el);
+}
+function startTour(){
+  if(document.querySelector('.tour-dim')) return;
+  const ui=spotlightUI(), box=ui.box;
+  const visible=el=>el&&el.offsetParent!==null;
+  const steps=TOUR_STEPS.filter(s=>!s.optional||visible(document.querySelector(s.sel)));   // optional steps only when their control is on screen
+  let i=0;
+  function show(n){
+    i=Math.max(0,Math.min(steps.length-1,n));
+    const s=steps[i];
+    if(s.open){ const d=document.querySelector(s.open); if(d&&'open' in d) d.open=true; }
+    box.innerHTML=`<div class="tour-step">STEP ${i+1} OF ${steps.length}</div><h4>${s.title}</h4><p>${s.text}</p>
+      <div class="tour-acts"><button class="btn-quiet back" ${i===0?'disabled':''}>Back</button><button class="next">${i===steps.length-1?'Done':'Next'}</button><button class="skip">Skip</button></div>`;
+    box.querySelector('.back').onclick=()=>show(i-1);
+    box.querySelector('.next').onclick=()=>i===steps.length-1?end():show(i+1);
+    box.querySelector('.skip').onclick=end;
+    ui.aim(document.querySelector(s.sel));
+  }
+  function end(){ ui.end(); removeEventListener('keydown',onKey); localStorage.setItem('nikkeOLtourSeen','1'); }
+  function onKey(e){ if(e.key==='Escape') end(); else if(e.key==='ArrowRight'||e.key==='Enter') (i===steps.length-1?end():show(i+1)); else if(e.key==='ArrowLeft') show(i-1); }
+  addEventListener('keydown',onKey);
+  show(0);
+}
+(function(){
+  const b=document.getElementById('howBtn'); if(!b) return;
+  b.onclick=startTour;
+  syncHowBtn();
+})();
+function syncHowBtn(){ const b=document.getElementById('howBtn'); if(b) b.classList.toggle('glow',desiredSet().length===0); }   // glows until targets exist
 </script>
 </body>
 </html>
