@@ -1,9 +1,9 @@
 // Exact optimal-policy solver for ONE gear piece, browser edition (runs in a Web Worker).
 // Port of tools/solver/solver.py: same state reduction, same value iteration with an exact
 // Keep/Change fixed point per state. Message in: {id, spec}; message out: {id, V, codes, L, nS}.
-//   spec = { targets:[{name, goal, weight}], junkWeight, tempLocks }
-//   targets: one entry per requirement slot; an "any of" group is one entry whose weight is the
-//   sum of its members' weights and whose name is the group key.
+//   spec = { targets:[{name, goal, weight}], slots:[[targetIdx,...],...], junkWeight, junkCount, tempLocks, minSlots }
+//   targets: one entry per effect, each with its own value goal. slots: groups of target indices; a slot
+//   is satisfied by any one of its members ("any of"), exactly as solver.py's slots. minSlots counts slots.
 'use strict';
 const ROLL=[1,2,3,4], LOCK=[2,3,4,4], LINE_P=[1,0.5,0.3], TEMP_LOCK_ROCKS=0.05;
 const BIN=t=>t<=5?0.12:(t<=10?0.07:0.01);
@@ -14,7 +14,9 @@ function classesFor(goal){
 }
 function solve(spec){
   const T=spec.targets, nT=T.length, WJ=spec.junkWeight, aJ=WJ/Math.max(1,spec.junkCount||6), temp=!!spec.tempLocks;
-  const minSlots=Math.max(1,Math.min(nT,spec.minSlots||nT));   // "any N of these targets" when smaller than nT
+  // slots: groups of target indices; a slot is satisfied by any one member ("any of"). Default: one target per slot.
+  const slots=(spec.slots&&spec.slots.length)?spec.slots:T.map((_,k)=>[k]);
+  const minSlots=Math.max(1,Math.min(slots.length,spec.minSlots||slots.length));   // "any N of these slots" when smaller
   const cls=T.map(t=>classesFor(t.goal));
   // line codes
   const codes=[{kind:0,tgt:-1,cls:-1,locked:0,meets:0},{kind:1,tgt:-1,cls:-1,locked:0,meets:0},{kind:1,tgt:-1,cls:-1,locked:1,meets:0}];
@@ -49,7 +51,7 @@ function solve(spec){
   for(let s=0;s<nS;s++){
     const tri=states[s];
     // done: at least minSlots slots (default: all of them) have a line at goal
-    let sat=0; for(let k=0;k<nT;k++){ if(tri.some(x=>codes[x].kind===2&&codes[x].tgt===k&&codes[x].meets)) sat++; } done[s]=sat>=minSlots?1:0;
+    let sat=0; for(const sl of slots){ if(tri.some(x=>codes[x].kind===2&&sl.includes(codes[x].tgt)&&codes[x].meets)) sat++; } done[s]=sat>=minSlots?1:0;
     const nl=tri.reduce((n,x)=>n+codes[x].locked,0); nlock[s]=nl;
     for(let i=0;i<3;i++){
       const cd=codes[tri[i]];

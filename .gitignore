@@ -2,3 +2,4 @@ tools/solver/solved_*.json
 tools/solver/advisor_policies*.json
 tools/solver/__pycache__/
 tools/solver/*_log.txt
+_solved_*.json

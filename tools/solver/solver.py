@@ -360,6 +360,10 @@ SCENARIOS = {
     # the user's example: third line may be any of three effects (values don't matter for them)
     'flex3':    ([('Elemental Damage', 8), ('ATK', 8), ('Critical Rate', 1), ('Critical Damage', 1), ('Max Ammo', 7)],
                  [[0], [1], [2, 3, 4]]),
+    # "any of" groups with the members' OWN goals (the page sends one target per member and a slot per group)
+    'critany':  ([('Elemental Damage', 8), ('ATK', 8), ('Critical Rate', 1), ('Critical Damage', 1)], [[0], [1], [2, 3]]),
+    'ammocs':   ([('Elemental Damage', 8), ('ATK', 8), ('Max Ammo', 7), ('Charge Speed', 8)], [[0], [1], [2, 3]]),
+    'critanyblue': ([('Elemental Damage', 12), ('ATK', 12), ('Critical Rate', 12), ('Critical Damage', 12)], [[0], [1], [2, 3]]),
     # "any N of these": a third element gives min_slots (the by-gear page with fewer lines wanted than targets)
     'any2of3':  ([('Elemental Damage', 8), ('ATK', 8), ('Max Ammo', 7)], [[0], [1], [2]], 2),
     'any1of3':  ([('Elemental Damage', 8), ('ATK', 8), ('Max Ammo', 7)], [[0], [1], [2]], 1),

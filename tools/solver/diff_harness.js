@@ -16,15 +16,23 @@
   window.__pols={}; window.__sums={};
   window.diffLoad=async function(name){
     const data=await fetch('_solved_'+name+'.json',{cache:'reload'}).then(r=>r.json());
+    // tables carry one target per effect and slots of target indices; a multi-member slot is an "any of" group
+    const slots=(data.slots&&data.slots.length)?data.slots:data.targets.map((_,k)=>[k]);
+    const keyFor=sl=>sl.length>1?groupKey(sl.map(k=>data.targets[k].effect)):data.targets[sl[0]].effect;
+    const goalFor=sl=>{ const gs=sl.map(k=>data.targets[k].goal); const same=gs.every(g=>g===gs[0]);
+      // a group has one chosen tier for all members; leave it unset when every member sits at its own default
+      if(sl.length>1 && sl.every(k=>data.targets[k].goal===minTier(data.targets[k].effect))) return null;
+      if(!same) throw new Error('group with mixed non-default goals cannot be expressed in the page: '+keyFor(sl));
+      return gs[0]; };
     if(isSimple){
       localStorage.removeItem('nikkeOL'); state=load();
-      EFF_NAMES.forEach(e=>state.roles[e]='Off'); state.goalTierBy={}; state.tempLocks=false;
-      data.targets.forEach(t=>{ state.roles[t.effect]='Target'; state.goalTierBy[t.effect]=t.goal; });
-      state.N=data.minSlots||data.targets.length;   // "any N of these" tables carry minSlots
+      EFF_NAMES.forEach(e=>state.roles[e]='Off'); state.goalTierBy={}; state.tempLocks=/_temp$/.test(name);
+      slots.forEach(sl=>{ const k=keyFor(sl), g=goalFor(sl); state.roles[k]='Target'; if(g!==null) state.goalTierBy[k]=g; });
+      state.N=data.minSlots||slots.length;   // "any N of these" tables carry minSlots
     }else{
       localStorage.removeItem('nikkeOL2'); state=load();
       state.req={}; state.goalTierBy={}; state.tempLocks=/_temp$/.test(name);
-      data.targets.forEach(t=>{ state.req[t.effect]=4; state.goalTierBy[t.effect]=t.goal; });
+      slots.forEach(sl=>{ const k=keyFor(sl), g=goalFor(sl); state.req[k]=4; if(g!==null) state.goalTierBy[k]=g; });
       if(typeof EV_CACHE!=='undefined') EV_CACHE.clear();
     }
     PIECES.forEach(p=>state.pieces[p]=[0,1,2].map(()=>({effect:'',tier:11,locked:false})));

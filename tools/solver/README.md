@@ -9,10 +9,19 @@ and well-worded; otherwise the solver's move is shown, built from the same templ
 card carries a "✓ exact" pill either way.
 
 The solver also covers "any N of these targets" (`minSlots` in the spec, used by the by-gear
-page when fewer lines are wanted than targets) and the whole-unit layer: on the whole-unit
-page, deciding which piece should carry a scarce effect (for example one Max Ammo across four
-pieces) uses the exact difference between that piece's cost with and without the extra target.
-Keys are not priced; they have no exchange rate in modules.
+page when fewer lines are wanted than targets), "any of" groups (`slots` in the spec: one
+target per member effect, each with its own value goal, and a slot that any one member
+satisfies, exactly as `solver.py`'s slots; before Oct 2026 the pages pooled a group into one
+pseudo-effect with the highest member goal, which overstated a Crit line's requirement and was
+1–2 modules off) and the whole-unit layer: on the whole-unit page, deciding which piece should
+carry a scarce effect (for example one Max Ammo across four pieces) uses the exact difference
+between that piece's cost with and without the extra target. Keys are not priced; they have
+no exchange rate in modules.
+
+Verification (Oct 2026): both pages were diffed state by state against `solver.py` tables for
+prydwen3/2, blue3, black3, mix3, cs3, the any-N tables, and the group tables critany, ammocs,
+critanyblue and flex3, in both lock modes: 0 disagreements, and every state's value matches to
+0.001 modules.
 
 | File | What it is |
 |---|---|
