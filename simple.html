@@ -34,8 +34,9 @@
   .ptile.active{background:var(--accentfill);border-color:var(--accent);color:#fff}
   .ptile.active .muted{color:#dbeaff}
   .ptile .name{font-weight:700;font-size:14.5px}
-  .picon{display:inline-block;width:16px;height:16px;vertical-align:-3px;margin-right:5px;color:var(--muted)}
+  .picon{display:inline-block;width:20px;height:20px;vertical-align:-5px;margin-right:5px;color:var(--muted)}
   .picon svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+  .picon img{width:100%;height:100%;object-fit:contain;display:block}
   .ptile.active .picon{color:#fff}
   .ptile.done .picon{color:#5fd67a}
   .ptile{container-type:inline-size}
@@ -153,6 +154,7 @@
   .tierrow select{flex:1;min-width:0;padding:3px 6px;font-size:12.5px}
   .tierrow.off{opacity:.65}
   .addbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;margin-top:6px;padding:8px 6px;border-top:1px dashed var(--line)}
+  .addbar #addPanel:empty{display:none}   /* an empty picker slot must not add a flex gap */
   .addbar .btn-quiet{font-size:13px;font-weight:600;color:var(--accent)}
   .addbar .btn-quiet:hover,.addbar .btn-quiet.on{color:#fff;background:var(--accentfill);border-color:var(--accent)}
   .addbar #anyPanel{flex-basis:100%}
@@ -227,7 +229,8 @@
   .gacts .gchange{background:var(--green);border-color:var(--green);color:#fff;font-weight:700}
   .gacts button[disabled]{opacity:.45;cursor:not-allowed}
   /* ---- how-to-use walkthrough ---- */
-  .tourbtn{margin-left:auto;flex-shrink:0;align-self:center;color:var(--accent);border-color:var(--accent);font-weight:600;white-space:nowrap}
+  .warnline > span{padding-right:34px}   /* keep the text clear of the How-to-use glow */
+  .tourbtn{margin-left:auto;flex-shrink:0;align-self:center;color:var(--accent);border-color:var(--accent);font-weight:600;white-space:nowrap;position:relative;z-index:1}   /* positioned so its glow paints over the text beside it */
   .tourbtn.glow{background:var(--accentfill);color:#fff;border-color:#9ccbff;animation:tourglow 1.2s ease-in-out infinite}   /* until targets exist */
   @keyframes tourglow{0%,100%{box-shadow:0 0 0 0 rgba(74,163,255,.9),0 0 0 0 rgba(74,163,255,.45);transform:scale(1)}
                       50%{box-shadow:0 0 22px 8px rgba(74,163,255,.95),0 0 0 14px rgba(74,163,255,.22);transform:scale(1.07)}}
@@ -254,7 +257,13 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
   <h1>NIKKE Overload Reroll Advisor</h1>
   <p class="sub">Shows the single best next move for one gear piece: Change Effects, Reset Attributes or Lock. Set your target, enter the piece, follow the step.</p>
 
-  <div class="warnline">⚠️&nbsp;<span><b style="color:#e0a94a">Guide only. Use your own judgment.</b> Costs are averages; your luck will vary. <details style="display:inline"><summary style="display:inline;cursor:pointer;color:var(--accent)">more</summary> <span class="muted">Every step is the cheapest move by exact calculation, using the game's own reroll odds and prices. If a patch changes those, the numbers change with them. Estimates assume you follow the advice, including sitting on a low value while hunting Blue or Black. Stop when your budget says stop.</span></details></span><button class="btn-quiet tourbtn" id="howBtn" title="A short walkthrough of the page">❔ How to use</button></div>
+  <div class="warnline">⚠️&nbsp;<span><b style="color:#e0a94a">Guide only. Use your own judgment.</b> Costs are averages; your luck will vary. <details style="display:inline"><summary style="display:inline;cursor:pointer;color:var(--accent)">click for more info</summary> <span class="muted">Every move here is the mathematically best one for finishing the piece over the long run, taken from a solved model of the game's reroll odds and prices. RNG still causes wide swings in luck, so the module forecast below is an estimated range, not a promise. The guide assumes you have enough modules to finish the piece. It is not for short-term fishing for a lucky roll with the modules you have, which can pay off now but costs more in the long run.</span></details></span><button class="btn-quiet tourbtn" id="howBtn" title="A short walkthrough of the page">❔ How to use</button></div>
+  <div class="warnline scopeline">ℹ️&nbsp;<span>Rolling all four pieces for one unit? The <a href="index.html" id="toWhole">Whole unit</a> tab will cost you fewer modules overall.</span></div>
+  <style>.scopeline{border-color:#2a4a6b;background:linear-gradient(90deg,rgba(74,163,255,.12),var(--panel) 60%);margin-top:-10px}</style>
+  <script>
+    // inside the tab shell the link just switches tabs; standalone it opens the shell
+    document.getElementById('toWhole').onclick=e=>{ if(window.self!==window.top){ e.preventDefault(); const t=window.parent.document.getElementById('tabAdv'); if(t) t.click(); } };
+  </script>
 
   <!-- ================= TARGETS ================= -->
   <div class="card">
@@ -303,7 +312,7 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
 
   <!-- ================= ADVICE ================= -->
   <div class="card">
-    <div class="h2row"><h2>3 · Do this next</h2>
+    <div class="h2row"><h2>3 · Next move</h2>
       <div class="lockmode" id="lockMode">
         <label class="switch"><input type="checkbox" id="tempSwitch"><span class="track"></span><span>🔑 Temp locks available</span></label>
         <span class="hint" id="tempHint"></span>
@@ -996,7 +1005,8 @@ const PIECE_ICON={
   Body:'<svg viewBox="0 0 24 24"><path d="M7 4l5 2 5-2v8c0 4-2.5 6.5-5 8-2.5-1.5-5-4-5-8z"/><path d="M12 6v14"/></svg>',
   Leg:'<svg viewBox="0 0 24 24"><path d="M8 3h7v9l4 3v5H8z"/><path d="M8 15h7"/></svg>'
 };
-const pIcon=p=>`<span class="picon">${PIECE_ICON[p]||''}</span>`;
+// in-game sprite from img/ (T10 attacker set: visor, armguard, vest, boots); the drawn glyph stands in if the file is missing
+const pIcon=p=>`<span class="picon"><img src="img/gear_${p.toLowerCase()}.webp" alt="" onerror="this.parentNode.innerHTML=PIECE_ICON['${p}']"></span>`;
 function renderTabs(){
   const t=document.getElementById('pieceTabs'); t.innerHTML='';
   const reqd=desiredSet().length>0;
@@ -1482,7 +1492,7 @@ function renderTotals(){
     : 'nothing entered yet';
   // show marked effects (even at 0 rolls, so gaps are visible) plus anything rolled
   const rows=EFF_NAMES.filter(e=>desired.includes(keyOf(e))||pass.includes(e)||agg[e]);
-  if(!rows.length){ box.innerHTML='<span class="muted">Nothing entered yet. Mark targets and fill in your pieces.</span>'; return; }
+  if(!rows.length){ box.innerHTML='<span class="muted">Nothing entered yet. Set targets and fill in your pieces.</span>'; return; }
   let html='<div style="overflow-x:auto"><table class="tot"><tr><th style="text-align:left">Effect</th><th>Total %</th><th>Counts as</th><th style="text-align:left">Where</th></tr>';
   rows.forEach(e=>{
     const a=agg[e]||{total:0,count:0,x:0,chips:[]};

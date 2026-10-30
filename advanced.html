@@ -48,8 +48,10 @@
   .ptile.active{background:var(--accentfill);border-color:var(--accent);color:#fff}
   .ptile.active .muted{color:#dbeaff}
   .ptile .name{font-weight:700;font-size:14.5px}
-  .picon{display:inline-block;width:16px;height:16px;vertical-align:-3px;margin-right:5px;color:var(--muted)}
+  .picon{display:inline-block;width:20px;height:20px;vertical-align:-5px;margin-right:5px;color:var(--muted)}
   .picon svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+  .picon img{width:100%;height:100%;object-fit:contain;display:block}
+  .pblock .phead .picon{width:26px;height:26px;vertical-align:-7px}
   .ptile.active .picon,.pblock.active .picon{color:#fff}
   .ptile.done .picon,.pblock.done .picon{color:#5fd67a}
   .ptile{container-type:inline-size}
@@ -157,14 +159,14 @@
   .tierrow select{flex:1;min-width:0;padding:3px 6px;font-size:12.5px}
   .tierrow.off{opacity:.65}
   /* 12-line budget UI */
-  .budget{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:4px}
+  .budget{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:4px;min-height:36px}   /* same height as the by-gear page's "Lines wanted" row */
   .presetsel{font-size:12.5px;padding:5px 8px;margin-left:auto}
-  .bignum{font-size:26px;font-weight:700;line-height:1}
+  .bignum{font-size:26px;font-weight:700;line-height:1;min-width:132px}   /* fixed so the bar never resizes when the count goes 0 → 10 → 12 */
   .bignum small{font-size:14px;color:var(--muted);font-weight:500}
   .bar{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;flex:1;min-width:260px;height:22px}
   .seg{border-radius:4px;background:#22262d;border:1px solid var(--line);position:relative}
   .seg.filled{border-color:transparent}
-  .seg .pieceSep{position:absolute;right:-3px;top:-4px;bottom:-4px;width:1px;background:var(--line)}
+  .seg .pieceSep{display:none}   /* the bar counts lines across the unit, not per piece, so no per-piece ticks */
   .legend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
   .presets{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 12px}
   .presets button{font-size:12.5px;padding:5px 10px}
@@ -191,6 +193,7 @@
   .addbar .btn-quiet:hover{color:#fff;background:var(--accentfill);border-color:var(--accent)}
   .addbar .btn-quiet.on{color:#fff;background:var(--accentfill);border-color:var(--accent)}
   .addbar #addPanel{flex-basis:100%}
+  .addbar #addPanel:empty{display:none}   /* an empty picker slot must not add a flex gap */
   .pickstrip{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px 10px;background:var(--panel2);border:1px solid var(--line);border-radius:8px}
   .chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:5px 10px;border-radius:20px;background:#12161c;border:1px solid var(--line);color:var(--text)}
   .chip:hover{border-color:var(--accent)}
@@ -202,7 +205,9 @@
   /* temp-lock availability switch: the one setting that changes every lock step */
   .h2row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px}
   .h2row h2{margin:0}
-  .h2row .unitprog{margin:0 0 0 auto}
+  .h2row .unitprog{margin:0}
+  .h2row .h2tools{margin-left:auto;display:flex;align-items:center;gap:16px;flex-wrap:wrap}   /* progress + "show all" share one line on the right */
+  .h2row .h2tools .allsw{margin-left:0}
   .lockmode{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--panel2);border:1px solid var(--orange);border-radius:24px;padding:6px 14px 6px 8px}
   .lockmode:has(input:checked){border-color:var(--green);box-shadow:0 0 0 3px rgba(46,160,67,.18)}
   .lockmode .switch{font-size:14.5px}
@@ -292,7 +297,8 @@
   .gacts .gchange{background:var(--green);border-color:var(--green);color:#fff;font-weight:700}
   .gacts button[disabled]{opacity:.45;cursor:not-allowed}
   /* ---- how-to-use walkthrough ---- */
-  .tourbtn{margin-left:auto;flex-shrink:0;align-self:center;color:var(--accent);border-color:var(--accent);font-weight:600;white-space:nowrap}
+  .warnline > span{padding-right:34px}   /* keep the text clear of the How-to-use glow */
+  .tourbtn{margin-left:auto;flex-shrink:0;align-self:center;color:var(--accent);border-color:var(--accent);font-weight:600;white-space:nowrap;position:relative;z-index:1}   /* positioned so its glow paints over the text beside it */
   .tourbtn.glow{background:var(--accentfill);color:#fff;border-color:#9ccbff;animation:tourglow 1.2s ease-in-out infinite}   /* until targets exist */
   @keyframes tourglow{0%,100%{box-shadow:0 0 0 0 rgba(74,163,255,.9),0 0 0 0 rgba(74,163,255,.45);transform:scale(1)}
                       50%{box-shadow:0 0 22px 8px rgba(74,163,255,.95),0 0 0 14px rgba(74,163,255,.22);transform:scale(1.07)}}
@@ -319,20 +325,20 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
   <h1>NIKKE Overload Reroll Advisor <span style="color:var(--accent2);font-size:15px;vertical-align:middle">Whole-unit planner</span></h1>
   <p class="sub">Set what the whole unit needs (for example Elemental ×4, ATK ×4, Ammo ×2) and follow one next move across all four pieces.</p>
 
-  <div class="warnline">⚠️&nbsp;<span><b style="color:#e0a94a">Guide only. Use your own judgment.</b> Costs are averages; your luck will vary. <details style="display:inline"><summary style="display:inline;cursor:pointer;color:var(--accent)">more</summary> <span class="muted">Every step is the cheapest move by exact calculation, using the game's own reroll odds and prices. If a patch changes those, the numbers change with them. Estimates assume you follow the advice, including sitting on a low value while hunting Blue or Black. Stop when your budget says stop.</span></details></span><button class="btn-quiet tourbtn" id="howBtn" title="A short walkthrough of the page">❔ How to use</button></div>
+  <div class="warnline">⚠️&nbsp;<span><b style="color:#e0a94a">Guide only. Use your own judgment.</b> Costs are averages; your luck will vary. <details style="display:inline"><summary style="display:inline;cursor:pointer;color:var(--accent)">click for more info</summary> <span class="muted">Every move here is the mathematically best one for finishing a full unit over the long run, taken from a solved model of the game's reroll odds and prices. RNG still causes wide swings in luck, so the module forecast below is an estimated range, not a promise. The guide assumes you have enough modules to finish the whole unit. It is not for short-term fishing for a lucky roll with the modules you have, which can pay off now but costs more in the long run.</span></details></span><button class="btn-quiet tourbtn" id="howBtn" title="A short walkthrough of the page">❔ How to use</button></div>
 
   <!-- ================= TARGETS ================= -->
   <div class="card">
     <details id="reqPanel">
       <summary class="reqsum">
-        <h2 style="display:inline;margin:0">1 · Unit requirements</h2>
+        <h2 style="display:inline;margin:0">1 · Targets</h2>
         <span id="reqChips" style="margin-left:10px"></span>
         <span class="muted" style="font-size:12px;margin-left:8px">(click to edit)</span>
+        <span class="muted" id="budgetFree" style="float:right;font-size:12.5px;margin-top:3px"></span>
       </summary>
       <div class="budget" style="margin-top:10px">
         <div class="bignum"><span id="budgetUsed">0</span><small> / 12 lines</small></div>
         <div class="bar" id="budgetBar"></div>
-        <span class="muted" id="budgetFree" style="font-size:12.5px"></span>
         <select id="presets" class="presetsel" title="Load a standard build">
           <option value="">Presets…</option>
           <option value="10">10/12 · Ele 4 · ATK 4 · Ammo 2</option>
@@ -344,7 +350,7 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
       </div>
       <table class="reqtbl" id="reqRows"></table>
       <div class="addbar">
-        <button class="btn-quiet" id="addEffBtn">＋ Add effect</button>
+        <button class="btn-quiet" id="addEffBtn">＋ Add target</button>
         <button class="btn-quiet" id="addAnyBtn" title="One line that any of several effects can fill, for example Crit Rate or Crit Damage">＋ Any of…</button>
         <button class="btn-quiet" id="addPassBtn" title="Bonus only: kept if it lands, never fished for, uses no lines">＋ Passable bonus</button>
         <span style="margin-left:auto;display:inline-flex;gap:6px;align-items:center">
@@ -361,7 +367,7 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
 
   <!-- ================= PIECES ================= -->
   <div class="card">
-    <div class="h2row"><h2>2 · Enter the gear pieces</h2><span class="muted" style="font-size:12.5px">Enter all four pieces as they look in the game. Tick Locked on any line you have locked.</span><div class="unitprog" id="unitProg" style="display:none"><span class="bar2"><i id="unitProgBar"></i></span><span id="unitProgText"></span></div><label class="switch allsw" title="Stack all four pieces top to bottom instead of one tab at a time"><input type="checkbox" id="allSwitch"><span class="track"></span><span>Show all four pieces</span></label></div>
+    <div class="h2row"><h2>2 · Enter the gear pieces</h2><span class="muted" style="font-size:12.5px">Enter all four pieces as they look in the game. Tick Locked on any line you have locked.</span><div class="h2tools"><div class="unitprog" id="unitProg" style="display:none"><span class="bar2"><i id="unitProgBar"></i></span><span id="unitProgText"></span></div><label class="switch allsw" title="Stack all four pieces top to bottom instead of one tab at a time"><input type="checkbox" id="allSwitch"><span class="track"></span><span>Show all four pieces</span></label></div></div>
     <div class="side" id="pieceEntry">
       <div>
         <div class="pgrid" id="pieceTabs"></div>
@@ -525,12 +531,12 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
     </details>
   </div>
 
-  <div style="margin-top:10px"><img id="hitBadge" alt="hits" style="height:20px"></div>
+  <div id="hitWrap" style="margin-top:10px"><img id="hitBadge" alt="hits" style="height:20px"></div>
   <script>
-    // One count per visit: the tab shell always loads BOTH pages, so only this
-    // (whole-unit) page pings the counter when embedded; opened standalone it
-    // counts itself too.
-    document.getElementById('hitBadge').src='https://hitcount.dev/p/ratman-codes/nikke-overload-advisor.svg';
+    // One count per visit: inside the tab shell the shell's top bar carries the counter,
+    // so this page only counts itself when opened standalone.
+    if(window.self===window.top) document.getElementById('hitBadge').src='https://hitcount.dev/p/ratman-codes/nikke-overload-advisor.svg';
+    else document.getElementById('hitWrap').style.display='none';
   </script>
 </div>
 
@@ -1080,15 +1086,15 @@ function recommendRules(piece){
 
   if(desired.length===0){
     if(reqEffects().length===0)
-      return {risk:'green',title:'Set your build requirements first',
-        body:'In section 1, set how many pieces need each effect, for example Elemental ×4, ATK ×4, Max Ammo ×2.',progress:0,a};
+      return {risk:'green',title:'Set your targets first',
+        body:'In section 1, pick the effects you want and how many pieces carry each one, for example Elemental ×4, ATK ×4, Max Ammo ×2.',progress:0,a};
     return {risk:'done',title:'✅ Nothing needed from this piece',
-      body:'Every requirement is already covered by other pieces. Leave this piece alone.',progress:100,a};
+      body:'Every target is already covered by other pieces. Leave this piece alone.',progress:100,a};
   }
 
   // Infeasible corner: the closure budget forced more musts onto this piece than 3 lines can hold.
   if(a.overflow)
-    return {risk:'red',title:'⚠️ Requirements no longer fit on this piece',
+    return {risk:'red',title:'⚠️ Targets no longer fit on this piece',
       body:`This piece would need ${a.mustAll.length} effects (${a.mustAll.map(dispKeyLong).join(', ')}) but a piece has 3 lines. Too many pieces finished without the shared effects. Lower a ×count in section 1 or roll one of the finished pieces again.`,
       progress:prog(a),a};
 
@@ -1359,9 +1365,8 @@ function renderEffGrid(){
   const effs=reqEffects(), pass=passableSet();
   const used=totalReqLines(), free=BUDGET-used;
   usedEl.textContent=used;
-  document.getElementById('budgetFree').innerHTML = !effs.length
-    ? '12 lines: 4 pieces × 3. A ×count is how many pieces carry that effect.'
-    : (free>0 ? `${free} unassigned` : '<span class="full">full</span>');
+  document.getElementById('budgetFree').innerHTML = !effs.length ? '' : (free>0 ? `${free} line${free===1?'':'s'} spare` : '<span class="full">all 12 lines assigned</span>');
+  usedEl.parentElement.title='4 pieces × 3 lines = 12 lines. Each ×count uses that many lines.';
   // the bar: one segment per line, filled in effect colours; ticks mark the four pieces
   const bar=document.getElementById('budgetBar'); bar.innerHTML='';
   const fill=[]; effs.forEach(e=>{ for(let i=0;i<reqOf(e);i++) fill.push(e); });
@@ -1390,7 +1395,7 @@ function renderEffGrid(){
     const rm=h('<button class="rm" title="remove">✕</button>'); rm.onclick=()=>{ delete state.req[e]; save(); renderEffGrid(); renderAll(); };
     tr.children[3].appendChild(rm); rows.appendChild(tr);   // 4 cells in a passable row (the note spans two)
   });
-  if(!effs.length&&!pass.length) rows.innerHTML='<tr><td class="muted">No requirements yet. Pick a preset or add an effect below.</td></tr>';
+  if(!effs.length&&!pass.length) rows.innerHTML='<tr><td class="muted">No targets yet. Pick a preset or add an effect below.</td></tr>';
   // ---- the add bar: one click opens a picker in place ----
   const taken=new Set([...EFF_NAMES.filter(e=>reqOf(e)>0), ...pass, ...reqGroups().flatMap(groupMembers)]);
   const avail=EFF_NAMES.filter(e=>!taken.has(e));
@@ -1496,7 +1501,7 @@ function renderBuildSummary(){
   const chips=document.getElementById('reqChips');
   const effs=reqEffects(), pass=passableSet();
   if(!effs.length){
-    el.innerHTML='<span class="muted">No requirements set yet — pick ×counts above.</span>';
+    el.innerHTML='<span class="muted">No targets set yet. Pick ×counts above.</span>';
     if(chips) chips.innerHTML='<span class="muted">none set yet</span>';
     return;
   }
@@ -1531,7 +1536,8 @@ const PIECE_ICON={
   Body:'<svg viewBox="0 0 24 24"><path d="M7 4l5 2 5-2v8c0 4-2.5 6.5-5 8-2.5-1.5-5-4-5-8z"/><path d="M12 6v14"/></svg>',
   Leg:'<svg viewBox="0 0 24 24"><path d="M8 3h7v9l4 3v5H8z"/><path d="M8 15h7"/></svg>'
 };
-const pIcon=p=>`<span class="picon">${PIECE_ICON[p]||''}</span>`;
+// in-game sprite from img/ (T10 attacker set: visor, armguard, vest, boots); the drawn glyph stands in if the file is missing
+const pIcon=p=>`<span class="picon"><img src="img/gear_${p.toLowerCase()}.webp" alt="" onerror="this.parentNode.innerHTML=PIECE_ICON['${p}']"></span>`;
 function renderTabs(){
   const t=document.getElementById('pieceTabs'); t.innerHTML='';
   const reqd=reqEffects().length>0;
@@ -1933,7 +1939,7 @@ function renderAdvice(){
   // ---- pick the GLOBAL target: one recommendation across all four pieces ----
   let target=state.active, rec;
   if(allMet){
-    rec={risk:'done',title:'🎉 Every requirement is met',body:'The build is complete. Stop rolling.',progress:100,a:analyze(state.active)};
+    rec={risk:'done',title:'🎉 Every target is met',body:'The build is complete. Stop rolling.',progress:100,a:analyze(state.active)};
   }else{
     const np=reqd?nextPiece():null;
     if(np&&np.need>0){ target=np.p; rec=recommend(np.p); }
@@ -2068,7 +2074,7 @@ function renderAdvice(){
 
   // ---- active-piece panel (section 2): its own pending step, for reference ----
   const aAct=analyze(state.active);
-  let aim=' · needs: '+(aAct.desired.length?aAct.desired.map(dispKeyLong).join(', '):'nothing, all covered');
+  let aim=reqEffects().length===0?' · no targets yet':(' · needs: '+(aAct.desired.length?aAct.desired.map(dispKeyLong).join(', '):'nothing, all covered'));
   if(aAct.optional && aAct.optional.length)
     aim+=' · bonus if it lands: '+aAct.optional.map(e=>`${dispKeyLong(e)} (${aAct.ua.remaining[e]} more needed)`).join(', ');
   document.getElementById('pieceMeta').textContent=`${aAct.lockedCount} locked${aim}`;
@@ -2121,7 +2127,7 @@ function renderTotals(){
     : 'nothing entered yet';
   // show required effects (even at 0 rolls, so gaps are visible) plus anything rolled
   const rows=EFF_NAMES.filter(e=>reqd.includes(keyOf(e))||pass.includes(e)||agg[e]);
-  if(!rows.length){ box.innerHTML='<span class="muted">Nothing entered yet. Set requirements and fill in your pieces.</span>'; return; }
+  if(!rows.length){ box.innerHTML='<span class="muted">Nothing entered yet. Set targets and fill in your pieces.</span>'; return; }
   let html='<div style="overflow-x:auto"><table class="tot"><tr><th style="text-align:left">Effect</th><th>Secured</th><th>Total %</th><th>Counts as</th><th style="text-align:left">Where</th></tr>';
   rows.forEach(e=>{
     const a=agg[e]||{total:0,count:0,x:0,chips:[]};
@@ -2168,7 +2174,7 @@ function buildStatTable(){
 document.getElementById('clearPiece').onclick=()=>{state.pieces[state.active]=[0,1,2].map(()=>({effect:'',tier:11,locked:false}));save();renderAll();};
 // Called by the shell's top-bar Reset button (same-origin iframe); also usable standalone.
 window.resetEverything=function(){
-  if(!confirm('Reset everything? This clears your requirements and all four gear pieces.')) return;
+  if(!confirm('Reset everything? This clears your targets and all four gear pieces.')) return;
   localStorage.removeItem('nikkeOL2');
   state=load();
   renderEffGrid();   // rebuild the requirement dropdowns too, not just the derived views
