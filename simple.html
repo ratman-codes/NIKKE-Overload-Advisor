@@ -1590,10 +1590,12 @@ const TOUR_STEPS=[
    text:'Add the effects you want on this piece, for example Elemental Damage, ATK and Max Ammo. "Value targets" sets the minimum value a line must reach to count. You can also set it per effect in the Min value column.', open:'#reqPanel'},
   {sel:'#pieceEntry', title:'Enter your gear',
    text:'This is where you tell the advisor what your gear looks like. Pick the piece you are rolling (Head, Body, Arm or Boots) and fill in its three lines, effect and value, exactly as they are in the game. Tick Locked on any locked line. You do the rolling in the game; keep this section matching your piece as you go.'},
+  {sel:'#costStrip', fallback:'#advice', title:'Check your budget',
+   text:'Before you roll, compare your stockpile with "This piece": the modules needed to finish it from where you are. If you are well short, finishing is unlikely and you could end up with a half-done piece.'},
   {sel:'#advice', title:'Follow the recommendation',
    text:'This card gives the single best next action: Change Effects, Reset Attributes, Lock or Unlock a line. Do that in the game.'},
   {sel:'#pieceEntry', title:'Update your gear',
-   text:'After the action, come back and update the piece so it matches the game again. The recommendation refreshes to the next best action. Repeat steps 3 and 4 until the piece is done.'},
+   text:'After the action, come back and update the piece so it matches the game again. The recommendation refreshes to the next best action. Repeat steps 4 and 5 until the piece is done.'},
   {sel:'#guideBtn', title:'Optional: Keep or Change help',
    text:'Not sure whether to keep a roll? Press this before you choose in the game, enter the result the game is offering, and it tells you Keep or Change.', optional:true},
 ];
@@ -1655,7 +1657,8 @@ function startTour(){
     box.querySelector('.back').onclick=()=>show(i-1);
     box.querySelector('.next').onclick=()=>i===steps.length-1?end():show(i+1);
     box.querySelector('.skip').onclick=end;
-    ui.aim(document.querySelector(s.sel));
+    let el=document.querySelector(s.sel); if(!visible(el)&&s.fallback) el=document.querySelector(s.fallback);   // e.g. the cost strip before targets exist
+    ui.aim(el);
   }
   function end(){ ui.end(); removeEventListener('keydown',onKey); localStorage.setItem('nikkeOLtourSeen','1'); }
   function onKey(e){ if(e.key==='Escape') end(); else if(e.key==='ArrowRight'||e.key==='Enter') (i===steps.length-1?end():show(i+1)); else if(e.key==='ArrowLeft') show(i-1); }

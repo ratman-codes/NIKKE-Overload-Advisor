@@ -1538,6 +1538,15 @@ const PIECE_ICON={
 };
 // in-game sprite from img/ (T10 attacker set: visor, armguard, vest, boots); the drawn glyph stands in if the file is missing
 const pIcon=p=>`<span class="picon"><img src="img/gear_${p.toLowerCase()}.webp" alt="" onerror="this.parentNode.innerHTML=PIECE_ICON['${p}']"></span>`;
+// "0 / 2 secured", or "0 / 2–3 secured" while an effect such as Ammo ×2 is still unassigned and could land on this piece
+function pieceSub(p,a){
+  const must=a.N, extra=Math.min(3-must,(a.optional||[]).length), top=must+extra;
+  return extra>0 ? `${securedCount(p)} / ${must}–${top} secured` : `${securedCount(p)} / ${must} secured`;
+}
+function pieceSubTitle(a){
+  if(!(a.optional&&a.optional.length)) return '';
+  return `${a.desired.map(dispKeyLong).join(' and ')} must be on this piece. ${a.optional.map(e=>`${dispKeyLong(e)} goes on ${a.ua.remaining[e]} more piece${a.ua.remaining[e]===1?'':'s'}, whichever get it first`).join('; ')}.`;
+}
 function renderTabs(){
   const t=document.getElementById('pieceTabs'); t.innerHTML='';
   const reqd=reqEffects().length>0;
@@ -1552,10 +1561,11 @@ function renderTabs(){
       const a=analyze(p);
       if(rec.risk==='done'){ sub='✓ done'; ok=true; }
       else if(!a.desired.length) sub='nothing needed';
-      else sub=`${securedCount(p)} / ${a.N} secured`;
+      else sub=pieceSub(p,a);
     }
     const tile=document.createElement('div');
     tile.className='ptile'+(p===state.active?' active':'')+(isNext?' hasnext':'')+(ok?' done':'');
+    if(reqd&&!ok) tile.title=pieceSubTitle(analyze(p));
     tile.innerHTML=`<div class="name">${pIcon(p)}${p}</div><div class="sub ${ok?'ok':'muted'}">${ok?'finished':sub}</div>${isNext?'<span class="next">NEXT</span>':''}`;
     tile.onclick=()=>{state.active=p;save();renderAll();};
     t.appendChild(tile);
@@ -1572,8 +1582,8 @@ function renderLineEditors(){
   const reqd=reqEffects().length>0, np=reqd?nextPiece():null;
   ['Head','Arm','Body','Leg'].forEach(p=>{
     const rec=recommend(p); const ok=reqd&&rec.risk==='done'; const isNext=!!(np&&np.need>0&&np.p===p);
-    let sub=''; if(reqd){ const a=analyze(p); sub=ok?'finished':(!a.desired.length?'nothing needed':`${securedCount(p)} / ${a.N} secured`); }
-    const blk=h(`<div class="pblock${p===state.active?' active':''}${ok?' done':''}"><div class="phead"><b>${pIcon(p)}${p}</b><span class="psub${ok?' ok':''}">${sub}</span>${isNext?'<span class="next">NEXT</span>':''}<button class="btn-quiet pclear" title="Empty this piece's three lines">Clear</button></div></div>`);
+    let sub='', tip=''; if(reqd){ const a=analyze(p); sub=ok?'finished':(!a.desired.length?'nothing needed':pieceSub(p,a)); tip=ok?'':pieceSubTitle(a); }
+    const blk=h(`<div class="pblock${p===state.active?' active':''}${ok?' done':''}"><div class="phead"><b>${pIcon(p)}${p}</b><span class="psub${ok?' ok':''}" title="${tip.replace(/"/g,'&quot;')}">${sub}</span>${isNext?'<span class="next">NEXT</span>':''}<button class="btn-quiet pclear" title="Empty this piece's three lines">Clear</button></div></div>`);
     blk.querySelector('.phead').onclick=e=>{ if(e.target.classList.contains('pclear')) return; if(state.active!==p){ state.active=p; save(); renderAll(); } };
     blk.querySelector('.pclear').onclick=()=>{ state.pieces[p]=[0,1,2].map(()=>({effect:'',tier:11,locked:false})); save(); renderAll(); };
     renderLinesFor(p,blk);
@@ -2199,10 +2209,12 @@ const TOUR_STEPS=[
    text:'Add the effects you want on this unit and how many pieces should carry each one, for example Elemental Damage on 4 pieces, ATK on 4, Max Ammo on 2. "Value targets" sets the minimum value a line must reach to count. You can also set it per effect in the Min value column.', open:'#reqPanel'},
   {sel:'#pieceEntry', title:'Enter your gear',
    text:'This is where you tell the advisor what your gear looks like. For each piece (Head, Body, Arm, Boots) fill in its three lines, effect and value, exactly as they are in the game, and tick Locked on any locked line. You do the rolling in the game; keep this section matching your gear as you go.'},
+  {sel:'#costStrip', fallback:'#advice', title:'Check your budget',
+   text:'Before you roll, compare your stockpile with "Modules to go": the modules needed to finish from where you are. If you are well short, finishing is unlikely and you could end up with half-done pieces.'},
   {sel:'#advice', title:'Follow the recommendation',
    text:'This card gives the single best next action: which piece to work on and whether to Change Effects, Reset Attributes, Lock or Unlock a line. Do that in the game.'},
   {sel:'#pieceEntry', title:'Update your gear',
-   text:'After the action, come back and update the piece you rolled so it matches the game again. The recommendation refreshes to the next best action. Repeat steps 3 and 4 until the unit is done.'},
+   text:'After the action, come back and update the piece you rolled so it matches the game again. The recommendation refreshes to the next best action. Repeat steps 4 and 5 until the unit is done.'},
   {sel:'#guideBtn', title:'Optional: Keep or Change help',
    text:'Not sure whether to keep a roll? Press this before you choose in the game, enter the result the game is offering, and it tells you Keep or Change.', optional:true},
 ];
@@ -2264,7 +2276,8 @@ function startTour(){
     box.querySelector('.back').onclick=()=>show(i-1);
     box.querySelector('.next').onclick=()=>i===steps.length-1?end():show(i+1);
     box.querySelector('.skip').onclick=end;
-    ui.aim(document.querySelector(s.sel));
+    let el=document.querySelector(s.sel); if(!visible(el)&&s.fallback) el=document.querySelector(s.fallback);   // e.g. the cost strip before targets exist
+    ui.aim(el);
   }
   function end(){ ui.end(); removeEventListener('keydown',onKey); localStorage.setItem('nikkeOL2tourSeen','1'); }
   function onKey(e){ if(e.key==='Escape') end(); else if(e.key==='ArrowRight'||e.key==='Enter') (i===steps.length-1?end():show(i+1)); else if(e.key==='ArrowLeft') show(i-1); }
