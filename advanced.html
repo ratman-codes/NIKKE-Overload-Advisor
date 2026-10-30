@@ -1962,9 +1962,14 @@ function renderAdvice(){
   if(strip){
     const remEV=reqd?totalRemainingEV():null;
     const benchEV=reqd?buildBenchmarkEV():null;
-    if(remEV===null&&benchEV===null){ strip.style.display='none'; }
+    strip.style.display='flex';   // always shown, so a new player sees where the estimate will appear
+    if(remEV===null&&benchEV===null){
+      document.getElementById('statLeft').innerHTML='<span class="muted">—</span>';
+      document.getElementById('statFull').innerHTML='<span class="muted">—</span>';
+      document.getElementById('costMeter').style.width='0%';
+      document.getElementById('costPct').textContent='no targets yet';
+    }
     else{
-      strip.style.display='flex';
       const kU=s=>(state.tempLocks&&s.keys)?` · ${s.keys} temp locks`:'';
       const busy=Exact.busy();   // tables still computing: placeholder instead of a simulated number that would change in a moment
       document.getElementById('statLeft').innerHTML=busy?'<span class="muted">…</span>':(remEV===null?'—':`~${remEV.ev}<span class="unit">±${remEV.sd}${kU(remEV)}</span>`);

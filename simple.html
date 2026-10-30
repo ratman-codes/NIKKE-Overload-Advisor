@@ -1430,7 +1430,12 @@ function renderAdvice(){
       const busy=Exact.busy();   // tables still computing: placeholder instead of a simulated number that would change in a moment
       document.getElementById('statLeft').innerHTML=busy?'<span class="muted">…</span>':(haveMine?`~${Math.round(exactV!==null?exactV:mine.ev)}${mine?`<span class="unit">±${Math.round(mine.sd)}${kU(mine)}</span>`:''}`:'done');
       document.getElementById('statAll').innerHTML=busy?'<span class="muted">…</span>':(any?`~${Math.round(tot)}${spreadOk?`<span class="unit">±${Math.round(Math.sqrt(var2))}${(state.tempLocks&&keys)?` · ${Math.round(keys)} temp locks`:''}</span>`:''}`:'done');
-    } else strip.style.display='none';
+    } else {   // nothing to estimate yet: keep the strip visible so a new player sees where the number will appear
+      strip.style.display='flex';
+      document.getElementById('statLeftLabel').textContent=state.active;
+      const dash='<span class="muted">—</span>';
+      document.getElementById('statLeft').innerHTML=dash; document.getElementById('statAll').innerHTML=dash;
+    }
   }
   // while the exact table is still computing (well under a second): a placeholder, never a move that could change
   const step=rec.exact==='pending'?h(`<div class="step pending"><h3>Working out the exact move…</h3></div>`):h(`<div class="step ${rec.risk}"><h3>${rec.title}</h3>${cleanBody?`<div style="font-size:13.5px">${cleanBody}</div>`:''}${riskLine}${securedLine}${(rec.cost||evPill)?`<div style="margin-top:8px">${rec.cost?`<span class="pill">${rec.cost}</span><span class="pill">${riskLabel(rec.risk)}</span>`:''}${rec.exact==='ok'?'<span class="pill" title="Checked against the exact solver">✓ exact</span>':(rec.exact==='pending'?'<span class="pill">checking exactly…</span>':'')}${evPill}</div>`:''}</div>`);
