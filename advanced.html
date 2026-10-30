@@ -1244,10 +1244,14 @@ function recommendRules(piece){
   if(!atGoalCand.length && resetCand.length && lockedCount===0 && cheapGoals){
     const multi=resetCand.length>1;
     const list=resetCand.map(l=>`Line ${l.i+1} ${l.effect} → ${goalVal(l.effect)}% (Tier ${goalTier(l.effect)}+)`).join(' · ');
+    // a line already at target but unlocked stays in the reroll: with two lines still to fix, a 1-module
+    // reset of everything beats paying for a lock, and a T9-ish value is quick to roll back
+    const atGoalOpen=desiredLines.filter(l=>!l.locked&&l.meets);
+    const holdNote=atGoalOpen.length?`<span class="muted"> ${atGoalOpen.map(l=>`Line ${l.i+1} ${l.effect}`).join(' and ')} is at target but stays unlocked and will re-roll with the rest. That is expected: while two lines still need values, a 1-module reset of everything is cheaper than a lock, and a value like this comes back quickly. Lock lines once two of them are at target.</span>`:'';
     return {risk:'green',
       title:multi?`🎯 Reset Attributes until Line ${resetCand.slice().sort((x,y)=>x.i-y.i).map(l=>l.i+1).join(', ').replace(/, (\d)$/,' or $1')} reaches its target, then lock that line`
                  :`🎯 Reset Attributes until Line ${resetCand[0].i+1} ${resetCand[0].effect} reaches ${goalVal(resetCand[0].effect)}% (Tier ${goalTier(resetCand[0].effect)}+), then lock it`,
-      body:`${list}.<span class="muted"> Nothing is locked, so a reset costs 1 module. Locking now would move the same value fishing to a higher roll price.</span>`,
+      body:`${list}.${holdNote}<span class="muted"> Nothing is locked, so a reset costs 1 module. Locking now would move the same value fishing to a higher roll price.</span>`,
       cost:`Reset ≈ ${mods(rerollCost(lockedCount))} each`, progress:prog(a), a};
   }
   const lockNow=atGoalCand.concat(belowCand);
@@ -1334,10 +1338,13 @@ function recommendRules(piece){
     }
     const list=below.map(l=>`Line ${l.i+1} ${l.effect} → ${goalVal(l.effect)}% (Tier ${goalTier(l.effect)}+)`).join(' · ');
     const multi=below.length>1;
+    // an at-target line left unlocked re-rolls with the rest: say so, and why
+    const openGood=desiredLines.filter(l=>!l.locked&&l.meets);
+    const holdNote=(openGood.length&&lockedCount===0)?`<span class="muted"> ${openGood.map(l=>`Line ${l.i+1} ${l.effect}`).join(' and ')} is at target but stays unlocked and will re-roll with the rest. That is expected: while ${below.length>1?'two lines still need':'another line still needs'} values, a 1-module reset of everything is cheaper than a lock, and a value like this comes back quickly. Lock lines once two of them are at target.</span>`:'';
     return {risk:riskByLocks,
       title:multi?`🎯 Reset Attributes until Line ${below.map(l=>l.i+1).join(', ').replace(/, (\d)$/,' or $1')} reaches its target, then lock that line`
                  :`🎯 Reset Attributes until Line ${below[0].i+1} ${below[0].effect} reaches ${goalVal(below[0].effect)}% (Tier ${goalTier(below[0].effect)}+)`,
-      body:`${list}.${multi?' Lock each line as it hits.':''}${below.map(l=>seatNote(l,lockedCount)).join('')}`,
+      body:`${list}.${multi?' Lock each line as it hits.':''}${holdNote}${below.map(l=>seatNote(l,lockedCount)).join('')}`,
       cost:`Reset ≈ ${mods(rerollCost(lockedCount))} each`, progress:prog(a), a};
   }
   return {risk:'done',title:'✅ This piece meets your target',body:'Nothing left to do on this piece.',progress:100,a};
@@ -1832,7 +1839,10 @@ function recommendCore(piece){
   }
   else if(best===8){
     const below=a.desiredLines.filter(l=>!l.locked&&!l.meets);
-    rec={risk,title:below.length>1?`🎯 Reset Attributes until Line ${below.map(l=>l.i+1).join(', ').replace(/, (\d)$/,' or $1')} reaches its target, then lock that line`:(below.length?`🎯 Reset Attributes until Line ${below[0].i+1} ${below[0].effect} reaches ${goalVal(below[0].effect)}% (Tier ${goalTier(below[0].effect)}+)`:'🎯 Reset Attributes'),body:`${below.map(l=>`Line ${l.i+1} ${l.effect} → ${goalVal(l.effect)}% (Tier ${goalTier(l.effect)}+)`).join(' · ')}.${below.length>1?' Lock each line as it hits.':''}${why}`,cost:`Reset ≈ ${mods(rerollCost(lockedCount))} each`};
+    // an at-target line left unlocked re-rolls with the rest: say so, and why
+    const openGood=a.desiredLines.filter(l=>!l.locked&&l.meets);
+    const holdNote=(openGood.length&&lockedCount===0)?` ${openGood.map(l=>`Line ${l.i+1} ${l.effect}`).join(' and ')} is at target but stays unlocked and will re-roll with the rest. That is expected: while ${below.length>1?'two lines still need':'another line still needs'} values, a 1-module reset of everything is cheaper than a lock, and a value like this comes back quickly. Lock lines once two of them are at target.`:'';
+    rec={risk,title:below.length>1?`🎯 Reset Attributes until Line ${below.map(l=>l.i+1).join(', ').replace(/, (\d)$/,' or $1')} reaches its target, then lock that line`:(below.length?`🎯 Reset Attributes until Line ${below[0].i+1} ${below[0].effect} reaches ${goalVal(below[0].effect)}% (Tier ${goalTier(below[0].effect)}+)`:'🎯 Reset Attributes'),body:`${below.map(l=>`Line ${l.i+1} ${l.effect} → ${goalVal(l.effect)}% (Tier ${goalTier(l.effect)}+)`).join(' · ')}.${below.length>1?' Lock each line as it hits.':''}${holdNote}${why}`,cost:`Reset ≈ ${mods(rerollCost(lockedCount))} each`};
   }
   else rec=rules;
   return Object.assign({progress:prog(a),a},rec,{exact:'ok',exactQ:bestQ,exactBest:bestQ,fromSolver:true});
@@ -2044,7 +2054,7 @@ function renderAdvice(){
     const held=[...plain.matchAll(/Temp-lock Line (\d)/g)].map(m=>+m[1]-1).concat(plain.includes('Temp-lock')?[...plain.matchAll(/\+ Line (\d)/g)].map(m=>+m[1]-1):[]);
     if(isRoll){
       const atRisk=(a.desiredLines||[]).filter(l=>!l.locked && l.meets && goalTier(l.effect)>1 && !held.includes(l.i));
-      if(atRisk.length) riskLine=`<div class="riskline">⚠ This reroll can change ${atRisk.map(l=>`Line ${l.i+1} ${l.effect} (${l.val}%, at goal)`).join(' and ')}. Keep the old result unless the new one is better overall.`+(state.tempLocks?' To hold it, temp-lock that line first.':'')+`</div>`;
+      if(atRisk.length) riskLine=`<div class="riskline">⚠ This roll also rerolls ${atRisk.map(l=>`Line ${l.i+1} ${l.effect} (${l.val}%, at goal)`).join(' and ')}. Leaving it unlocked is deliberate: a lock would raise the price of every roll. If the new roll loses it without gaining more, press Keep.</div>`;
     }
   }
   // ---- finished states: show what was secured ----
