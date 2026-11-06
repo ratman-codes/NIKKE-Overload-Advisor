@@ -2440,6 +2440,21 @@ function renderAdvice(){
     if(np&&np.need>0){ target=np.p; rec=recommend(np.p); }
     else rec=recommend(state.active);
   }
+  // Baseline first (player's rule, 6 Nov 2026): while any piece with a job has never been rolled, the move is to
+  // roll each such piece once and enter what landed. It costs nothing extra (that first press is the same under
+  // any plan, and no first roll is worse than an empty piece), and the plan is better with all four pieces known.
+  // Only this card changes: the piece picker, the tiles and the "later step" lines still come from recommend().
+  var baseline=null;
+  if(reqd&&!allMet){
+    const unrolled=PIECES.filter(p=>state.pieces[p].every(l=>!l.effect)&&analyze(p).desired.length>0);
+    if(unrolled.length){
+      target=unrolled.includes(state.active)?state.active:unrolled[0];
+      baseline=unrolled;
+      rec={risk:'green',title:`🔁 Change Effects once on ${_orList(unrolled,'and')}: the first roll`,
+        body:`Press <b>Change Effects</b> once on ${unrolled.length>1?'each of them':'it'} and enter what landed here. This is the baseline: you have to roll ${unrolled.length>1?'them':'it'} anyway, so it costs nothing extra, and the plan is better once all four pieces are known.`,
+        cost:'Change ≈ 1 module each',progress:prog(analyze(target)),a:analyze(target),exact:'ok'};
+    }
+  }
   setGuideButton(target,rec);
 
   // KPI strip: the two cost numbers, front and center in the decision hub
@@ -2477,7 +2492,7 @@ function renderAdvice(){
 
   // survey-first nudge: rolled pieces start with up to 3 lines, so 2+ fully-empty
   // pieces usually means they just haven't been entered yet — free information.
-  if(reqd && !allMet){
+  if(reqd && !allMet && !baseline){
     const emptyPieces=PIECES.filter(p=>state.pieces[p].every(l=>!l.effect));
     if(emptyPieces.length>=2)
       adv.appendChild(h(`<div class="muted" style="margin-bottom:8px;font-size:13px">Enter ${emptyPieces.length===4?'your pieces':emptyPieces.join(', ')} first. The plan improves with full information.</div>`));
@@ -2564,7 +2579,15 @@ function renderAdvice(){
   }else if(typeof wrongPiece!=='undefined' && wrongPiece){
     // the move is for another piece: the card is the gate. Loud switch first, the instruction
     // dimmed underneath so it can be read ahead but not mistaken for a move on this piece.
-    const gate=h(`<div class="gate"><div class="top"><span class="warnico">⚠️</span><b>Switch to ${target} before you roll</b><span class="muted">This move is for ${target}, not ${state.active}.</span><button class="btn-primary big">Switch to ${target}</button></div><div class="next"><div class="tag">Then, on ${target}:</div><h3>${rec.title}</h3>${cleanBody?`<div style="font-size:13.5px">${cleanBody}</div>`:''}${riskLine}${pillsHtml}</div></div>`);
+    // the piece being viewed may hold an unlocked wanted line: say it is safe until that piece is rolled, so leaving
+    // it unlocked (a lock costs the same later) does not read as the page forgetting the hold it promised
+    let safeNote='';
+    { const ac=state.active, ar=recommend(ac), aa=actionOf(ar), al=analyze(ac);
+      // only lines that piece's own next step holds (a lock, or a temp lock on the roll): a line it rerolls anyway is not "safe"
+      const t=_plain(ar.title); const held=new Set(); if(aa>=1&&aa<=3) held.add(aa-1); if(t.includes('Temp-lock')){ [...t.matchAll(/Temp-lock Line (\d)/g)].forEach(m=>held.add(+m[1]-1)); [...t.matchAll(/\+ Line (\d)/g)].forEach(m=>held.add(+m[1]-1)); }
+      const open=state.pieces[ac].map((l,i)=>({l,i})).filter(o=>held.has(o.i)&&!o.l.locked&&_wanted(al,o.l));
+      if(open.length&&ar.risk!=='done') safeNote=` ${_orList(open.map(o=>`${o.l.effect} on Line ${o.i+1}`),'and')} of ${ac} ${open.length>1?'are':'is'} safe until ${ac} is rolled${aa>=1&&aa<=3?`; the lock comes when ${ac} is next (box 2 shows the step)`:`; hold it then (box 2 shows the step)`}.`; }
+    const gate=h(`<div class="gate"><div class="top"><span class="warnico">⚠️</span><b>Switch to ${target} before you roll</b><span class="muted">This move is for ${target}, not ${state.active}.${safeNote}</span><button class="btn-primary big">Switch to ${target}</button></div><div class="next"><div class="tag">Then, on ${target}:</div><h3>${rec.title}</h3>${cleanBody?`<div style="font-size:13.5px">${cleanBody}</div>`:''}${riskLine}${pillsHtml}</div></div>`);
     gate.querySelector('button').onclick=()=>{ state.active=target; save(); renderAll(); };
     adv.appendChild(gate);
   }else{
@@ -2637,10 +2660,11 @@ function nextPiece(){
     const a=analyze(p);
     const need=a.N-Math.min(a.distinctGood.size,a.N);
     const hasAny=a.desiredLines.length>0;
-    // A lock or unlock is a one-off, not a roll: it comes before any roll on any piece, so a card that said
-    // "take the roll, then hold that line" is followed by that hold and not by "switch to another piece".
-    const act=need>0?actionOf(recommend(p)):0; const oneOff=act>=1&&act<=6;
-    const score = (oneOff?100:0) + need*10 + (hasAny?0:3) - (need>0?locksAtNextRoll(p):a.lockedCount)*2;
+    // A piece is ranked as if its pending lock were already placed (locksAtNextRoll), so a lock is asked for
+    // only when that piece is about to be rolled, never followed by "switch to another piece": a lock costs
+    // the same later, and the line is safe until the piece is rolled (the player's rule). Do not put one-off
+    // locks first (tried 6 Nov 2026: lock, then "Switch to Body", exactly what the player had asked to avoid).
+    const score = need*10 + (hasAny?0:3) - (need>0?locksAtNextRoll(p):a.lockedCount)*2;
     if(!best || score>best.score) best={p,score,need};
   });
   __npKey=key; __npVal=best;
