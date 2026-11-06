@@ -1266,6 +1266,47 @@ function actionOf(rec){ const t=(rec&&rec.title||'').replace(/<[^>]+>/g,''); let
   if((m=t.match(/^🔓 Unlock Line (\d)/))) return 3+ +m[1];
   if((m=t.match(/^⚠️ Line (\d) .* is locked below/))) return 3+ +m[1];
   if(t.startsWith('🔁')) return 7; if(t.startsWith('🎯')) return 8; if(t.startsWith('✅')||t.startsWith('🎉')) return 0; return -1; }
+/* What a Change Effects card should tell you to wait for, read from the exact table.
+   A wanted effect landing on a free line counts when that roll is already cheaper to finish
+   from than the piece as it stands, even with the effect at its lowest value and every other
+   free line blank. The rules' wording named every free line and only the effects missing from
+   the piece; that misled when a wanted effect sat on Line 1 (it always rolls, so what is on it
+   is worth nothing until Line 2/3 are settled) and the real target was "either one on Line 3".
+   When no single landing counts, the rules' text stands. */
+function withChangeGoal(piece,rec,tail){
+  const cur=state.pieces[piece]; const vCur=Exact.value(piece,cur); if(vCur===null) return rec;
+  const a=rec.a||analyze(piece);
+  const copy=()=>cur.map(l=>l.locked?{effect:l.effect,tier:l.tier,locked:true}:{effect:'',tier:11,locked:false});
+  const onLine={}; const nexts=new Set();
+  [0,1,2].filter(i=>!cur[i].locked).forEach(i=>{ a.desired.forEach(k=>{
+    let bv=null, bl=null;
+    groupMembers(k).forEach(e=>{ const ls=copy(); ls[i]={effect:e,tier:1,locked:false}; const v=Exact.value(piece,ls); if(v!==null&&(bv===null||v<bv)){ bv=v; bl=ls; } });
+    if(bv!==null && bv<vCur-EXACT_TIE){ (onLine[i]=onLine[i]||[]).push(k); const q=Exact.qvalues(piece,bl); nexts.add(q?q.best:-1); }
+  }); });
+  const idx=Object.keys(onLine).map(Number).sort(); if(!idx.length) return rec;
+  const orList=xs=>xs.length>1?xs.slice(0,-1).join(', ')+' or '+xs[xs.length-1]:String(xs[0]);
+  const eff=i=>orList(onLine[i].map(dispKeyLong));
+  const same=idx.every(i=>onLine[i].join('|')===onLine[idx[0]].join('|'));
+  const parts=same?[[eff(idx[0]),'Line '+orList(idx.map(i=>i+1))]]:idx.slice().reverse().map(i=>[eff(i),'Line '+(i+1)]);
+  const nx=nexts.size===1?[...nexts][0]:-1;
+  const then=(nx>=1&&nx<=3)?(state.tempLocks?', then lock or temp-lock that line.':', then lock that line.')
+            :nx===8?'. Then the values get rerolled.':nx===0?'. That finishes the piece.':'. Keep that roll, then follow the next step.';
+  // Line 1 is free but no landing on it counts: say so, and that losing what is on it is free
+  let note='';
+  if(!cur[0].locked && !onLine[0]){
+    const ls=cur.map(l=>({effect:l.effect,tier:l.tier,locked:!!l.locked})); ls[0]={effect:'',tier:11,locked:false};
+    const vNo=Exact.value(piece,ls);
+    if(vNo!==null && vNo<=vCur+EXACT_TIE){
+      const wanted=cur[0].effect && a.desired.includes(keyOf(cur[0].effect));
+      note=` Line 1 does not count yet.<span class="muted"> It rolls an effect every time, so it is filled last.${wanted?` Losing the ${cur[0].effect} on it costs nothing.`:''}</span>`;
+    }
+  }
+  // the rules' warning about a rare Line 1 roll stays only when that roll is worth something
+  const warns=note?'':((rec.body||'').match(/ ?<span class="warn">.*?<\/span>/g)||[]).join('');
+  return Object.assign({},rec,{
+    title:`🔁 Change Effects until ${parts.map(p=>`${p[0]} lands on ${p[1]}`).join(', or ')}`,
+    body:`Press <b>Change Effects</b> until ${parts.map(p=>`<b>${p[0]}</b> lands on <b>${p[1]}</b>`).join(', or ')}${then}${note}${warns}${tail||''}`});
+}
 function recommendCore(piece){
   const rules=recommendRules(piece);
   const st=Exact.status(piece);
@@ -1273,7 +1314,7 @@ function recommendCore(piece){
   if(st==='pending') return Object.assign({},rules,{exact:'pending'});
   const qs=Exact.qvalues(piece,state.pieces[piece]); if(!qs) return rules;
   const best=qs.best, bestQ=qs.Q[best]; const ra=actionOf(rules);
-  if(ra>=0 && isFinite(qs.Q[ra]) && qs.Q[ra]<=bestQ+EXACT_TIE) return Object.assign({},rules,{exact:'ok',exactQ:qs.Q[ra],exactBest:bestQ});
+  if(ra>=0 && isFinite(qs.Q[ra]) && qs.Q[ra]<=bestQ+EXACT_TIE){ const kept=Object.assign({},rules,{exact:'ok',exactQ:qs.Q[ra],exactBest:bestQ}); return ra===7?withChangeGoal(piece,kept):kept; }
   if(ra===0 && best===0) return rules;
   // build the solver's move from the rules' templates
   const a=analyze(piece); const lines=a.lines; const lockedCount=a.lockedCount;
@@ -1296,7 +1337,8 @@ function recommendCore(piece){
     rec={risk,title:below.length>1?`🎯 Reset Attributes until Line ${below.map(l=>l.i+1).join(', ').replace(/, (\d)$/,' or $1')} reaches its target, then lock that line`:(below.length?`🎯 Reset Attributes until Line ${below[0].i+1} ${below[0].effect} reaches ${goalVal(below[0].effect)}% (Tier ${goalTier(below[0].effect)}+)`:'🎯 Reset Attributes'),body:`${below.map(l=>`Line ${l.i+1} ${l.effect} → ${goalVal(l.effect)}% (Tier ${goalTier(l.effect)}+)`).join(' · ')}.${below.length>1?' Lock each line as it hits.':''}${holdNote}${why}`,cost:`Reset ≈ ${mods(rerollCost(lockedCount))} each`};
   }
   else rec=rules;
-  return Object.assign({progress:prog(a),a},rec,{exact:'ok',exactQ:bestQ,exactBest:bestQ,fromSolver:true});
+  const out=Object.assign({progress:prog(a),a},rec,{exact:'ok',exactQ:bestQ,exactBest:bestQ,fromSolver:true});
+  return best===7?withChangeGoal(piece,out,why):out;
 }
 
 /* ===== ROLL GUIDE: after a roll, enter what the game showed and get Keep / Change =====
