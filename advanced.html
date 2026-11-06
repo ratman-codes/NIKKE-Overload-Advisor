@@ -1999,12 +1999,23 @@ const _pct=e=>Math.round(100*pAtLeast(goalTier(e)));
 const _notes=(rec,cls,skip)=>((rec.body||'').match(new RegExp(' ?<span class="'+cls+'">.*?</span>','g'))||[]).filter(s=>!skip||!skip.test(s)).join('');
 const _nk=k=>isGroup(k)?groupMembers(k).join(' / '):k;
 const _nearLock=q=>[1,2,3].some(k=>isFinite(q.Q[k])&&q.Q[k]<=q.Q[q.best]+EXACT_TIE);
+/* Whole-unit page: a landing, a value or a "then ..." is judged with the piece holding `ls` and the unit's
+   plan re-chosen around it, because the plan may then move an effect to another piece. That is the measure
+   the roll guide and every figure on the page use. The per-piece table alone prices the piece against a
+   fixed set of targets, and so called a wanted effect on Line 2 worthless while the unit still had spare
+   lines (Nov 2026: "Lines 1 and 2 do not count yet" on an empty Head with Ammo x2, when taking Elemental
+   there saved 5 modules and made Head a two-line piece). On the by-gear page the targets are fixed, so the
+   piece's own table is the measure. null while a table is still computing. */
+function withLines(piece,ls,fn){ const was=state.pieces[piece]; state.pieces[piece]=ls; try{ return fn(); } finally{ state.pieces[piece]=was; } }
+function unitValue(piece,ls){ if(typeof planCostWith==='function'){ const v=planCostWith(piece,ls); if(v!==null||Exact.busy()) return v; } return Exact.value(piece,ls); }
+function qAt(piece,ls){ return withLines(piece,ls,()=>Exact.qvalues(piece,ls)); }
+function nextSentenceAt(piece,ls){ return withLines(piece,ls,()=>nextSentence(piece,analyze(piece),ls)); }
 // What the solver does next from `ls` (the piece after this card's move), as a sentence.
 function nextSentence(piece,a,ls){
   const q=Exact.qvalues(piece,ls); if(!q) return ' Then update the piece here for the next step.';
   const n=q.best, nm=i=>`${ls[i].effect} on Line ${i+1}`;
   if(n===0) return ' That finishes the piece.';
-  if(n>=1&&n<=3) return state.tempLocks?` Then hold ${nm(n-1)} as well. The next step says whether with a lock or a temp lock.`:` Then lock ${nm(n-1)} as well.`;
+  if(n>=1&&n<=3) return state.tempLocks?` Then hold ${nm(n-1)} as well. This piece's next step says whether with a lock or a temp lock.`:` Then lock ${nm(n-1)} as well.`;
   if(n>=4&&n<=6) return ` Then unlock ${nm(n-4)} too (free).`;
   if(n===7){ const have=new Set(ls.filter(l=>l.effect).map(l=>keyOf(l.effect))); const miss=a.desired.filter(k=>!have.has(k)).map(_nk);
     return miss.length?` Then press Change Effects to roll for ${_orList(miss,a.N<a.desired.length?'or':'and')}.`:' Then press Change Effects again.'; }
@@ -2018,24 +2029,30 @@ function nextSentence(piece,a,ls){
    always rolls, so what is on it is worth nothing until Line 2/3 are settled.) When no single
    landing counts, the rules' text stands. */
 function withChangeGoal(piece,rec,tail){
-  const cur=state.pieces[piece]; const vCur=Exact.value(piece,cur); if(vCur===null) return rec;
+  const cur=state.pieces[piece]; const vCur=unitValue(piece,cur); if(vCur===null) return rec;
   const a=rec.a||analyze(piece);
   const blank=()=>cur.map(l=>l.locked?{effect:l.effect,tier:l.tier,locked:true}:{effect:'',tier:11,locked:false});
-  const onLine={}; const nexts=new Set(), sents=new Set(); let full=true;
-  [0,1,2].filter(i=>!cur[i].locked).forEach(i=>{ a.desired.forEach(k=>{
+  // every effect the unit still wants, not only the ones planned for this piece: a landing counts when the
+  // unit is cheaper to finish with it here, and the plan then moves the effect to this piece if need be
+  const keys=a.desired.slice(); if(typeof planCostWith==='function') reqEffects().forEach(k=>{ if(!keys.includes(k)&&a.ua.remaining[k]>0) keys.push(k); });
+  const onLine={}; const nexts=new Set(), sents=new Set(), moved=new Set(); let full=true, holdLanded=true;   // holdLanded: every counted landing is followed by a lock of that same line
+  [0,1,2].filter(i=>!cur[i].locked).forEach(i=>{ keys.forEach(k=>{
     let bv=null, bl=null;
-    groupMembers(k).forEach(e=>{ const ls=blank(); ls[i]={effect:e,tier:1,locked:false}; const v=Exact.value(piece,ls); if(v!==null&&(bv===null||v<bv)){ bv=v; bl=ls; } });
-    if(bv!==null && bv<vCur-EXACT_TIE){ (onLine[i]=onLine[i]||[]).push(k); const q=Exact.qvalues(piece,bl); nexts.add(q?q.best:-1); sents.add(nextSentence(piece,a,bl));
-      const have=new Set(bl.filter(l=>l.effect).map(l=>keyOf(l.effect))); if(a.desired.filter(d=>have.has(d)).length<a.N) full=false; }
+    groupMembers(k).forEach(e=>{ if(cur.some(l=>l.locked&&l.effect===e)) return; const ls=blank(); ls[i]={effect:e,tier:1,locked:false}; const v=unitValue(piece,ls); if(v!==null&&(bv===null||v<bv)){ bv=v; bl=ls; } });
+    if(bv!==null && bv<vCur-EXACT_TIE){ (onLine[i]=onLine[i]||[]).push(k); if(!a.desired.includes(k)) moved.add(k); const q=qAt(piece,bl); nexts.add(q?q.best:-1); sents.add(nextSentenceAt(piece,bl)); if(!q||q.best!==1+i) holdLanded=false;
+      if(!withLines(piece,bl,()=>{ const a2=analyze(piece); const have=new Set(bl.filter(l=>l.effect).map(l=>keyOf(l.effect))); return a2.desired.filter(d=>have.has(d)).length>=a2.N; })) full=false; }
   }); });
   const idx=Object.keys(onLine).map(Number).sort(); if(!idx.length) return rec;
   const eff=i=>_orList(onLine[i].map(_nk));
   const same=idx.every(i=>onLine[i].join('|')===onLine[idx[0]].join('|'));
   const parts=same?[[eff(idx[0]),'Line '+_orList(idx.map(i=>i+1))]]:idx.slice().reverse().map(i=>[eff(i),'Line '+(i+1)]);
-  const nx=nexts.size===1?[...nexts][0]:-1;
-  const one=idx.length===1?`Line ${idx[0]+1}`:'the line it landed on';
+  // one next move for every counted landing; "hold the line it landed on" also covers a Line 2 landing followed
+  // by a lock of Line 2 and a Line 3 landing followed by a lock of Line 3
+  const nx=nexts.size===1?[...nexts][0]:(holdLanded?1:-1);
+  // the line the lock goes on: the landed line, or (one landing, a lock elsewhere) the solver's line
+  const one=holdLanded?(idx.length===1?`Line ${idx[0]+1}`:'the line it landed on'):`Line ${nx}`;
   const take=' When it does, press Change to take the roll';
-  const then=(nx>=1&&nx<=3)?(state.tempLocks?`${take}, then hold ${one} for the rolls that follow. The next step says whether with a lock or a temp lock.`:`${take}, then lock ${one} so it is not lost while you roll for the rest.`)
+  const then=(nx>=1&&nx<=3)?(state.tempLocks?`${take}, then hold ${one} on every later roll of this piece. This piece's next step says whether with a lock or a temp lock.`:`${take}, then lock ${one} so it is not lost while you roll for the rest.`)
             :nx===8?(full?`${take}. Every effect is then on the piece, and the next step is Reset Attributes to raise the values.`:`${take}. The next step is Reset Attributes, to raise its value before it is locked.`)
             :nx===0?`${take}. That finishes the piece.`
             :nx===7?`${take}, then keep pressing Change Effects for the rest. No lock is needed yet.`
@@ -2043,7 +2060,7 @@ function withChangeGoal(piece,rec,tail){
             :nexts.size>1?`${take}, then enter the new roll here: the next step depends on which effect landed.`
             :`${take}, then enter the new roll here for the next step.`;
   // free lines where a landing does not count yet, and what sits on them is worth nothing
-  const dead=[0,1].filter(i=>!cur[i].locked&&!onLine[i]).filter(i=>{ const ls=_copy(cur); ls[i]={effect:'',tier:11,locked:false}; const v=Exact.value(piece,ls); return v!==null&&v<=vCur+EXACT_TIE; });
+  const dead=[0,1].filter(i=>!cur[i].locked&&!onLine[i]).filter(i=>{ const ls=_copy(cur); ls[i]={effect:'',tier:11,locked:false}; const v=unitValue(piece,ls); return v!==null&&v<=vCur+EXACT_TIE; });
   let note='';
   if(dead.length===2) note=' Lines 1 and 2 do not count yet: they roll an effect more often than Line 3 (every time and half the time, against 30%), so they are filled after it.';
   else if(dead[0]===0) note=' Line 1 does not count yet: it rolls an effect every time, so it is the easiest line to fill and comes last.';
@@ -2053,11 +2070,8 @@ function withChangeGoal(piece,rec,tail){
   // a Blue or Black line above the target is never called worthless: the choice above the card covers it
   const rareLost=[0,1,2].filter(i=>!cur[i].locked&&_wanted(a,cur[i])&&rareAbove(cur[i])).map(i=>`${rareAbove(cur[i])>=15?'Black':'Blue'} ${cur[i].effect} on Line ${i+1}`);
   if(rareLost.length) note+=` This also rerolls your ${_orList(rareLost,'and')}: see the choice above the move.`;
-  // an effect planned for another piece that would still be worth taking here: the plan would move it
-  let also='';
-  if(typeof planCostWith==='function'){ const uCur=planCostWith(piece,cur); const extra=[];
-    if(uCur!==null) reqEffects().filter(k=>!a.desired.includes(k)).forEach(k=>{ [2,1].filter(i=>!cur[i].locked).some(i=>{ let bv=null; groupMembers(k).forEach(e=>{ if(cur.some(l=>l.locked&&l.effect===e)) return; const ls=blank(); ls[i]={effect:e,tier:1,locked:false}; const v=planCostWith(piece,ls); if(v!==null&&(bv===null||v<bv)) bv=v; }); if(bv!==null&&bv<uCur-EXACT_TIE){ extra.push(`${_nk(k)} on Line ${i+1}`); return true; } return false; }); });
-    if(extra.length) also=` ${_orList(extra,'or')} is worth taking too, although it is planned for another piece: the plan would move it here.`; }
+  // an effect planned for another piece that counts here all the same: the plan would move it
+  const also=moved.size?` ${_orList([...moved].map(_nk),'and')} ${moved.size>1?'are':'is'} planned for another piece, but worth taking here: the plan then moves it.`:'';
   // the rules' warning about a rare Line 1 roll stays only when that roll is worth something
   const warns=dead.includes(0)?'':_notes(rec,'warn');
   return Object.assign({},rec,{
@@ -2068,28 +2082,30 @@ function withChangeGoal(piece,rec,tail){
 function withResetCard(piece,rec,tail){
   const cur=state.pieces[piece]; const a=rec.a||analyze(piece);
   const m=_plain(rec.title).match(/until Line ([\d, or]+?) (?:reaches|[A-Z])/); if(!m) return rec;
-  const vCur=Exact.value(piece,cur);
+  const vCur=unitValue(piece,cur);
   const after=(i,from)=>{ const s=_copy(from||cur); s[i].tier=Math.max(s[i].tier,goalTier(s[i].effect)); return s; };
   let named=[...m[1].matchAll(/\d/g)].map(x=>+x[0]-1).filter(i=>cur[i]&&cur[i].effect&&!cur[i].locked);
   if(!named.length) return rec;
-  // a below-target line the rules did not name: it joins the list when reaching its target is progress
-  const idle=[];
-  cur.forEach((l,i)=>{ if(named.includes(i)||!_wanted(a,l)||l.locked||_meets(l)) return; const v=Exact.value(piece,after(i)); if(vCur!==null&&v!==null&&v<vCur-EXACT_TIE) named.push(i); else idle.push(i); });
+  // a below-target line the rules did not name: it joins the list when reaching its target is progress. On the
+  // whole-unit page that includes a unit target planned for another piece: the plan then moves it here.
+  const idle=[], moved=[];
+  const openHere=l=>_wanted(a,l)||(typeof planCostWith==='function'&&!!l.effect&&reqEffects().includes(keyOf(l.effect))&&a.ua.remaining[keyOf(l.effect)]>0);
+  cur.forEach((l,i)=>{ if(named.includes(i)||!openHere(l)||l.locked||_meets(l)) return; const v=unitValue(piece,after(i)); if(vCur!==null&&v!==null&&v<vCur-EXACT_TIE){ named.push(i); if(!_wanted(a,l)) moved.push(i); } else if(_wanted(a,l)) idle.push(i); });
   named.sort();
   const nm=i=>`${cur[i].effect} (Line ${i+1})`;
   const lockers=[], others=[];
-  named.forEach(i=>{ const q=Exact.qvalues(piece,after(i)); const ok=!q||q.best===0||(isFinite(q.Q[1+i])&&q.Q[1+i]<=q.Q[q.best]+EXACT_TIE); (ok?lockers:others).push(i); });
+  named.forEach(i=>{ const q=qAt(piece,after(i)); const ok=!q||q.best===0||(isFinite(q.Q[1+i])&&q.Q[1+i]<=q.Q[q.best]+EXACT_TIE); (ok?lockers:others).push(i); });
   const keepNote='if a reset comes out worse you press Keep and lose nothing';
   let lock;
-  if(named.length===1){ const i=named[0], s=after(i), q=Exact.qvalues(piece,s);
+  if(named.length===1){ const i=named[0], s=after(i), q=qAt(piece,s);
     if(q&&q.best===0) lock=' That finishes the piece.';
     else if(lockers.length) lock=' Lock it as soon as it gets there, so later rolls cannot lower it.';
-    else lock=` When it gets there, leave it unlocked.${nextSentence(piece,a,s)}`;
+    else lock=` When it gets there, leave it unlocked.${nextSentenceAt(piece,s)}`;
   }else if(!others.length) lock=' Lock each line as soon as it reaches its target, so later resets cannot lower it.';
   else{
     const ps=[...new Set(others.map(i=>_pct(cur[i].effect)))];
     const why=others.length>1?`those targets come up on about ${ps.join('% and ')}% of resets, so they return quickly`:`its target comes up on about ${ps[0]}% of resets, so it returns quickly`;
-    let two=true; others.forEach(i=>named.filter(j=>j!==i).forEach(j=>{ const q=Exact.qvalues(piece,after(j,after(i))); if(q&&q.best!==0&&!_nearLock(q)) two=false; }));
+    let two=true; others.forEach(i=>named.filter(j=>j!==i).forEach(j=>{ const q=qAt(piece,after(j,after(i))); if(q&&q.best!==0&&!_nearLock(q)) two=false; }));
     const later=two?' Lock once two lines are at target.':' Update the piece here after each hit, and the card says when to lock.';
     lock=lockers.length
       ? ` Lock ${_orList(lockers.map(nm))} as soon as it reaches its target. If ${_orList(others.map(nm))} gets there first, leave it unlocked and keep resetting: ${why}, and a lock would raise the price of every reset.${later}`
@@ -2100,11 +2116,12 @@ function withResetCard(piece,rec,tail){
   const rareNote=openRare.length?` This also rerolls your ${_orList(openRare.map(o=>`${rareAbove(o.l)>=15?'Black':'Blue'} ${o.l.effect} on Line ${o.i+1}`),'and')}: see the choice above the move.`:'';
   const openNote=rareNote+(open.length?` ${_orList(open.map(o=>`${o.l.effect} on Line ${o.i+1}`),'and')} ${open.length>1?'are already at target but stay unlocked and re-roll':'is already at target but stays unlocked and re-rolls'} with the rest. That is intended: a lock would raise the price of every reset, and ${keepNote}.`:'');
   const idleNote=idle.length?`<span class="muted"> ${_orList(idle.map(i=>`${cur[i].effect} on Line ${i+1}`),'and')} re-roll${idle.length>1?'':'s'} too, but reaching its target there does not make the piece cheaper to finish yet.</span>`:'';
+  const movedNote=moved.length?` ${_orList(moved.map(i=>`${cur[i].effect} on Line ${i+1}`),'and')} ${moved.length>1?'are':'is'} planned for another piece, but worth raising here: the plan then moves it.`:'';
   const head=(a.N===1&&named.length===1)
     ? `Press <b>Reset Attributes</b> until <b>${cur[named[0]].effect} on Line ${named[0]+1}</b> reaches ${goalVal(cur[named[0]].effect)}% (Tier ${goalTier(cur[named[0]].effect)} or higher). No lock is needed: with one target there is nothing else to protect, and ${keepNote}.`
     : `${named.map(i=>`Line ${i+1} ${cur[i].effect} → ${goalVal(cur[i].effect)}% (Tier ${goalTier(cur[i].effect)}+)`).join(' · ')}.${lock}${openNote}`;
   const title=(named.length>1?`🎯 Reset Attributes until Line ${_orList(named.map(i=>i+1))} reaches its target`:rec.title).replace(/, then lock (that line|it)$/,'');
-  return Object.assign({},rec,{title,body:`${head}${idleNote}${_notes(rec,'muted',/stays unlocked|No lock needed|Checked against/)}${_notes(rec,'warn')}${tail||''}`});
+  return Object.assign({},rec,{title,body:`${head}${movedNote}${idleNote}${_notes(rec,'muted',/stays unlocked|No lock needed|Checked against/)}${_notes(rec,'warn')}${tail||''}`});
 }
 // Lock: the effect and line, why it is worth a lock, and the solver's next move after it.
 function withLockCard(piece,rec,tail){
@@ -2120,7 +2137,7 @@ function withLockCard(piece,rec,tail){
   else if(i===2) why=`Line 3 rolls an effect only 30% of the time, so a wanted effect there is worth holding even below target.${later}`;
   else if(i===1) why=`Line 2 rolls an effect only half the time, so this one is worth holding while you roll for the rest.${later}`;
   else why=`Holding it makes the piece cheaper to finish than rolling it again.${later}`;
-  return Object.assign({},rec,{body:`Lock <b>${l.effect} on Line ${i+1}</b> now${at?'':' at its current value'}. ${why}${nextSentence(piece,a,s2).replace(' too (free)',' (free)')}${_notes(rec,'warn')}${tail||''}`});
+  return Object.assign({},rec,{body:`Lock <b>${l.effect} on Line ${i+1}</b> now${at?'':' at its current value'}. ${why}${nextSentenceAt(piece,s2).replace(' too (free)',' (free)')}${_notes(rec,'warn')}${tail||''}`});
 }
 // Unlock: the effect and line, why the lock is not worth keeping, and the solver's next move.
 function withUnlockCard(piece,rec,tail){
@@ -2130,18 +2147,19 @@ function withUnlockCard(piece,rec,tail){
   const l=cur[is[0]], many=is.length>1;
   const have=new Set(cur.filter(x=>x.effect).map(x=>keyOf(x.effect))); const allHere=a.desired.filter(k=>have.has(k)).length>=a.N;
   let why;
-  if(!_wanted(a,l)) why=`${l.effect} is not one of this piece's targets, so its lock only raises the price of every roll.`;
+  if(!_wanted(a,l)) why=reqEffects().includes(keyOf(l.effect))?`${l.effect} is planned for other pieces, so here its lock only raises the price of every roll.`:`${l.effect} is not one of this piece's targets, so its lock only raises the price of every roll.`;
   else if(!_meets(l)&&allHere) why=`${many?'They are':'It is'} below target, and a locked line cannot be reset.`;
   else if(is[0]===0) why=`Line 1 rolls an effect every time, so a lock there only raises the price of every roll.${_meets(l)?' If a roll comes out worse, pressing Keep holds the current one anyway.':''}`;
   else if(!_meets(l)) why='It is below target and the piece is still missing an effect, so for now the lock only raises the price of every roll.';
   else why='The piece is cheaper to finish without this lock, because every lock raises the price of each roll.';
-  let nx=nextSentence(piece,a,s2).replace(' as well.','.');
-  const q=Exact.qvalues(piece,s2); const b=cur.filter(x=>x.locked).length, af=s2.filter(x=>x.locked).length;
+  let nx=nextSentenceAt(piece,s2).replace(' as well.','.');
+  const q=qAt(piece,s2); const b=cur.filter(x=>x.locked).length, af=s2.filter(x=>x.locked).length;
   if(q&&q.best===8&&rerollCost(af)<rerollCost(b)) nx+=` Each reset then costs ${rerollCost(af)} module${rerollCost(af)>1?'s':''} instead of ${rerollCost(b)}.`;
   const half=/counts as about half an effect/.test(rec.body||'')?' Or keep the low value, which counts as about half an effect.':'';
   return Object.assign({},rec,{body:`Unlock <b>${_orList(is.map(i=>`${cur[i].effect} on Line ${i+1}`),'and')}</b> (free). ${why}${nx}<span class="muted">${half} Modules already spent on the lock are not refunded.</span>${tail||''}`});
 }
 function exactWording(piece,rec,act,tail){
+  if(unitValue(piece,state.pieces[piece])===null&&Exact.busy()) return Object.assign({},rec,{exact:'pending'});
   if(act===7) return withChangeGoal(piece,rec,tail);
   if(act===8) return withResetCard(piece,rec,tail);
   if(act>=1&&act<=3) return withLockCard(piece,rec,tail);
@@ -2259,7 +2277,7 @@ function recommendCoreRaw(piece){
     if(ku.length){ const i=ku[0], l=state.pieces[piece][i], a=analyze(piece), nl=a.lockedCount, word=tierWord(l.tier);
       if(nl<2){ const ke=keepExtra(piece,l.effect,keepFloor(piece,l.effect)); const x=ke?Math.round(ke.extra):null; const s2=_copy(state.pieces[piece]); s2[i].locked=true;
         return {risk:nl===1?'orange':'green', title:`🔒 Lock Line ${i+1}: ${word} ${l.effect} (${EFFECTS[l.effect].vals[l.tier-1]}%, Tier ${l.tier})`,
-          body:`Lock <b>${l.effect} on Line ${i+1}</b> now. You chose to keep this ${word} line.${x!==null?` It is not the cheapest plan: finishing ${scopeName(piece)} costs about ${x} more module${x===1?'':'s'} in exchange.`:''}${nextSentence(piece,a,s2)}`,
+          body:`Lock <b>${l.effect} on Line ${i+1}</b> now. You chose to keep this ${word} line.${x!==null?` It is not the cheapest plan: finishing ${scopeName(piece)} costs about ${x} more module${x===1?'':'s'} in exchange.`:''}${nextSentenceAt(piece,s2)}`,
           cost:`Lock ≈ ${mods(lockCost(nl))}`, progress:prog(a), a, exact:'ok', kept:true}; } } }
   const rules=recommendRules(piece);
   const st=Exact.status(piece);
@@ -2619,7 +2637,10 @@ function nextPiece(){
     const a=analyze(p);
     const need=a.N-Math.min(a.distinctGood.size,a.N);
     const hasAny=a.desiredLines.length>0;
-    const score = need*10 + (hasAny?0:3) - (need>0?locksAtNextRoll(p):a.lockedCount)*2;
+    // A lock or unlock is a one-off, not a roll: it comes before any roll on any piece, so a card that said
+    // "take the roll, then hold that line" is followed by that hold and not by "switch to another piece".
+    const act=need>0?actionOf(recommend(p)):0; const oneOff=act>=1&&act<=6;
+    const score = (oneOff?100:0) + need*10 + (hasAny?0:3) - (need>0?locksAtNextRoll(p):a.lockedCount)*2;
     if(!best || score>best.score) best={p,score,need};
   });
   __npKey=key; __npVal=best;
