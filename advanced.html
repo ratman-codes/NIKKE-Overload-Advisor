@@ -253,7 +253,7 @@
   /* declutter layout */
   .warnline{display:flex;gap:6px;align-items:center;border:1px solid #4a3714;background:linear-gradient(90deg,var(--orangebg),var(--panel) 60%);border-radius:10px;padding:8px 13px;font-size:13px;margin-bottom:18px}
   /* budget strip: one block per figure (label, big number, the buffer in plain words, small details) */
-  .coststrip{display:grid;grid-template-columns:minmax(0,270px) minmax(0,140px) minmax(180px,1fr);gap:6px 36px;align-items:start;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 14px;font-size:12.5px}
+  .coststrip{display:grid;grid-template-columns:minmax(0,215px) minmax(0,140px) minmax(180px,1fr);gap:6px 36px;align-items:start;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 14px;font-size:12.5px}
   .cs-label{font-size:12px;color:var(--muted)}
   .cs-num{font-size:22px;font-weight:700;color:var(--text);line-height:1.25}
   .cs-pm{font-size:13px;font-weight:500;color:var(--muted);margin-left:6px}
@@ -435,7 +435,7 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
     </div>
     <div id="costStrip" class="coststrip" style="display:none;margin:0 0 12px">
       <div class="cs-block" title="Average Custom Modules to finish from where you are, if you follow the advice."><div class="cs-label">Modules to go</div><div class="cs-num" id="statLeft">—</div><div class="cs-sub" id="statLeftSafe"></div><div class="cs-det" id="statLeftDet"></div></div>
-      <div class="cs-block" title="Average Custom Modules for this build starting from four empty pieces."><div class="cs-label">Full build</div><div class="cs-num" id="statFull">—</div><div class="cs-sub">from an empty unit</div><div class="cs-det" id="statFullDet"></div></div>
+      <div class="cs-block" title="Average Custom Modules for this build starting from four empty pieces. Rare lines you chose to keep are included."><div class="cs-label">Full build</div><div class="cs-num" id="statFull">—</div><div class="cs-sub" id="statFullSub">from an empty unit</div><div class="cs-det" id="statFullDet"></div></div>
       <div class="cs-block cs-prog" title="How far along you are, by modules: what is left against the full build."><div class="cs-label">Progress</div><div class="cs-num" id="costPct">—</div><span class="meter"><i id="costMeter" style="width:0%"></i></span><div class="cs-sub" id="costPctSub"></div></div>
       <span class="cs-item" id="sessCount" style="display:none"></span>
     </div>
@@ -1663,13 +1663,13 @@ function renderBuildSummary(){
   const bench=buildBenchmarkEV();
   const kTxt=s=>(state.tempLocks&&s&&s.keys)?` + ~${s.keys} temp locks`:'';
   const evTxt=evOk?` &nbsp;·&nbsp; <span class="muted">📉 ~${evTot.ev} ±${evTot.sd} modules${kTxt(evTot)} to go from here</span>`:'';
-  const benchTxt=bench?` &nbsp;·&nbsp; <span class="muted">📦 this build from scratch ≈ ~${bench.ev} ±${bench.sd} modules${kTxt(bench)} on average</span>`:'';
+  const benchTxt=bench?` &nbsp;·&nbsp; <span class="muted">📦 this build from scratch ≈ ~${fullBuildFigure(bench,evOk?evTot:null)} ±${bench.sd} modules${kTxt(bench)} on average</span>`:'';
   el.innerHTML=`<b>Build: ${total} / 12 lines</b> &nbsp;·&nbsp; ${parts} &nbsp;<span class="muted">— secured ${secured} of ${total}</span>${evTxt}${benchTxt}${warn}`;
   // compact always-visible chips in the collapsed header
   if(chips){
     const t=effs.map(e=>`<span class="badge ${secBy[e]<reqOf(e)?'b-good':'b-lock'}" title="${dispKeyLong(e)}: ${secBy[e]} / ${reqOf(e)} secured">${dispKey(e)} ×${reqOf(e)}${secBy[e]<reqOf(e)?'':' ✓'}</span>`).join(' ');
     const p=pass.length?' '+pass.map(e=>`<span class="badge b-other" title="Passable bonus">${EFF_ABBR[e]||e} ~</span>`).join(' '):'';
-    const evChip=evOk?` <span class="badge b-other" title="Expected modules remaining from the current state${bench?' / full build from scratch':''}">📉 ${Exact.busy()?'…':`~${evTot.ev} to go${bench?` / ~${bench.ev} full`:''}`}</span>`:'';
+    const evChip=evOk?` <span class="badge b-other" title="Expected modules remaining from the current state${bench?' / full build from scratch':''}">📉 ${Exact.busy()?'…':`~${evTot.ev} to go${bench?` / ~${fullBuildFigure(bench,evTot)} full`:''}`}</span>`:'';
     const warnChip=warn?' <span class="badge b-low">⚠</span>':'';
     chips.innerHTML=`${t}${p} <span class="badge b-other">${total}/12</span> <span class="badge b-other">secured ${secured}/${total}</span>${evChip}${warnChip}`;
   }
@@ -2189,6 +2189,11 @@ function keepExtra(piece,eff,floor){
 }
 function keepTagHtml(ps){ let n=0,tot=0,unk=false; ps.forEach(p=>keptLines(p).forEach(i=>{ const l=state.pieces[p][i]; const ke=keepExtra(p,l.effect,keepFloor(p,l.effect)); n++; if(ke) tot+=ke.extra; else unk=true; }));
   return n?` <span class="keeptag" title="Extra modules for the rare line${n>1?'s':''} you chose to keep. Already included in the figure.">${unk?'…':'+'+Math.round(tot)} for ${n} kept line${n>1?'s':''}</span>`:''; }
+// The "Full build" figure shown on the page: the cheapest plan from four empty pieces, plus the rare lines the player
+// chose to keep, so it is the same build as "Modules to go". It is never shown below "Modules to go": any unit is at
+// least as far along as an empty one (unlocking is free), so a lower figure could only be rounding.
+function fullBuildFigure(bench,rem){ if(!bench) return null; const k=Exact.busy()?0:Math.round(keepSum(PIECES)); return Math.max(bench.ev+k, rem?rem.ev:0); }
+function keptCount(){ let n=0; PIECES.forEach(p=>{ n+=keptLines(p).length; }); return n; }
 function keepSum(ps){ let tot=0; ps.forEach(p=>keptLines(p).forEach(i=>{ const l=state.pieces[p][i]; const ke=keepExtra(p,l.effect,keepFloor(p,l.effect)); if(ke) tot+=ke.extra; })); return tot; }
 function unkeep(piece,eff){ if(state.keep&&state.keep[piece]) delete state.keep[piece][eff]; cleanKeep(); save(); renderAll(); }
 // the piece the advice card is about, and its rare line still awaiting a choice (for the pointer on the line in box 2)
@@ -2434,15 +2439,17 @@ function renderAdvice(){
       const tl=x=>(state.tempLocks&&x&&x.keys)?`~${x.keys} temp locks`:'';
       const pm=x=>(x&&x.sd)?`<span class="cs-pm">±${x.sd}</span>`:'';
       $('statLeft').innerHTML=busy?'<span class="muted">…</span>':(remEV===null?'—':`~${remEV.ev}${pm(remEV)}`);
-      $('statFull').innerHTML=busy?'<span class="muted">…</span>':(benchEV===null?'—':`~${benchEV.ev}${pm(benchEV)}`);
+      const fullEv=fullBuildFigure(benchEV,remEV);   // includes kept rare lines, like "Modules to go"
+      $('statFull').innerHTML=busy?'<span class="muted">…</span>':(benchEV===null?'—':`~${fullEv}${pm(benchEV)}`);
       // The buffer: the figure 9 builds in 10 finish within, rounded up to a ten; the hover gives the rarer cases.
       const up10=v=>Math.ceil(v/10)*10;
       const q=(!busy&&remEV&&remEV.ev>0)?remEV.q:null; const safe=q?up10(q.p90):null;
-      $('statLeftSafe').innerHTML=safe?`have about <b>${safe}</b> for a 90% chance to finish`:'';
+      $('statLeftSafe').innerHTML=safe?`<b>${safe}</b> rocks for 90% chance to finish`:'';
       $('statLeftSafe').title=safe?`${remEV.ev} is the average if you follow the advice. 9 builds in 10 finish within ${safe}. About 1 in 20 costs more than ${up10(q.p95)}, and about 1 in 100 more than ${up10(q.p99)}. With fewer modules than you need, you stop with pieces half done.`:'';
       $('statLeftDet').innerHTML=busy?'':[tl(remEV),keepTagHtml(PIECES).trim()].filter(Boolean).join(' · ');
       $('statFullDet').textContent=busy?'':tl(benchEV);
-      const pct=(!busy&&remEV!==null&&benchEV&&benchEV.ev>0)?Math.max(0,Math.min(100,Math.round(100*(1-(remEV.ev-keepSum(PIECES))/benchEV.ev)))):null;
+      $('statFullSub').textContent=(!busy&&keptCount()>0)?'empty unit + kept lines':'from an empty unit';
+      const pct=(!busy&&remEV!==null&&fullEv>0)?Math.max(0,Math.min(100,Math.round(100*(1-remEV.ev/fullEv)))):null;
       $('costMeter').style.width=(pct===null?0:pct)+'%';
       $('costPct').innerHTML=pct===null?'<span class="muted">…</span>':`${pct}%`; $('costPctSub').textContent='';
     }
@@ -2731,7 +2738,7 @@ const TOUR_STEPS=[
   {sel:'#pieceEntry', title:'Enter your gear',
    text:'This is where you tell the advisor what your gear looks like. For each piece (Head, Arm, Body, Leg) fill in its three lines, effect and value, exactly as they are in the game, and tick Locked on any locked line. You do the rolling in the game; keep this section matching your gear as you go.'},
   {sel:'#costStrip', fallback:'#advice', title:'Check your budget',
-   text:'Before you roll, look at "Modules to go". The big number is the average needed to finish from where you are. The line under it says how many to have for a 90% chance to finish, because bad luck can cost more. With fewer than that you could end up with half-done pieces.'},
+   text:'Before you roll, look at "Modules to go". The big number is the average needed to finish from where you are. The line under it says how many you need for a 90% chance to finish, because bad luck can cost more. With fewer than that you could end up with half-done pieces.'},
   {sel:'#advice', title:'Follow the recommendation',
    text:'This card gives the single best next action: which piece to work on and whether to Change Effects, Reset Attributes, Lock or Unlock a line. Do that in the game. If a "Rare roll" box appears above the card, you rolled a Blue or Black line: pick an option and press Confirm. While "Recalculating" is showing, wait for it to finish.'},
   {sel:'#pieceEntry', title:'Update your gear',
