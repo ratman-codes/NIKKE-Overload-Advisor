@@ -4,13 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NIKKE Overload Reroll Advisor</title>
+<meta name="description" content="Free reroll advisor for NIKKE overload gear. Enter your gear lines and the effects you want and get the cheapest next move, Change Effects, Reset Attributes, Lock or Unlock, from an exact solver, with the expected Custom Module cost. Plans a whole unit or a single piece.">
+<link rel="canonical" href="https://ratman-codes.github.io/NIKKE-Overload-Advisor/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="NIKKE Overload Reroll Advisor">
+<meta property="og:title" content="NIKKE Overload Reroll Advisor">
+<meta property="og:description" content="Free reroll advisor for NIKKE overload gear. Enter your gear lines and the effects you want and get the cheapest next move, Change Effects, Reset Attributes, Lock or Unlock, from an exact solver, with the expected Custom Module cost. Plans a whole unit or a single piece.">
+<meta property="og:url" content="https://ratman-codes.github.io/NIKKE-Overload-Advisor/">
+<meta name="twitter:card" content="summary">
 <style>
   :root{ --bg:#0e1117; --panel:#161b22; --line:#2a323d; --text:#e6edf3; --muted:#9aa7b4; --accent:#4aa3ff; --accentfill:#1d6fd6; --accent2:#7c5cff; }
   *{box-sizing:border-box}
   html,body{height:100%}
   body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,Segoe UI,Roboto,sans-serif;display:flex;flex-direction:column}
   .topbar{display:flex;gap:8px;align-items:center;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
-  .brand{font-weight:700;margin-right:8px}
+  .brand{font-weight:700;margin:0 8px 0 0;font-size:inherit;line-height:inherit}
   .ttab{padding:7px 18px;border-radius:8px;border:1px solid var(--line);background:#1c232d;cursor:pointer;font-weight:600;user-select:none}
   .ttab:hover{border-color:var(--accent)}
   .ttab.active{background:var(--accentfill);border-color:var(--accentfill);color:#fff}
@@ -23,7 +31,7 @@
 </head>
 <body>
   <div class="topbar">
-    <span class="brand">NIKKE Overload Advisor</span>
+    <h1 class="brand">NIKKE Overload Advisor</h1>
     <div class="ttab" id="tabAdv">Whole unit</div>
     <div class="ttab" id="tabSimple">By gear piece</div>
     <button class="treset" id="btnReset" title="Clears the active tab's saved data (requirements/targets and all four gear pieces)">🗑 Reset</button>

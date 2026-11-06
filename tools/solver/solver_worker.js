@@ -4,6 +4,9 @@
 //   spec = { targets:[{name, goal, weight}], slots:[[targetIdx,...],...], junkWeight, junkCount, tempLocks, minSlots }
 //   targets: one entry per effect, each with its own value goal. slots: groups of target indices; a slot
 //   is satisfied by any one of its members ("any of"), exactly as solver.py's slots. minSlots counts slots.
+//   pin: optional list of line positions (0..2) that may never be unlocked. The page sets it when the player
+//   chooses to keep a rare roll above the target, so costs are exact for finishing with that line held.
+//   Not in solver.py; with no pin the tables are identical to it.
 'use strict';
 const ROLL=[1,2,3,4], LOCK=[2,3,4,4], LINE_P=[1,0.5,0.3], TEMP_LOCK_ROCKS=0.05;
 const BIN=t=>t<=5?0.12:(t<=10?0.07:0.01);
@@ -13,7 +16,7 @@ function classesFor(goal){
   return [...groups.keys()].sort((a,b)=>a-b).map(key=>{ const tiers=groups.get(key); return {band:Math.floor(key/10), meets:key%10, tiers, mass:tiers.reduce((s,t)=>s+BIN(t),0), m:BIN(tiers[0])}; });
 }
 function solve(spec){
-  const T=spec.targets, nT=T.length, WJ=spec.junkWeight, aJ=WJ/Math.max(1,spec.junkCount||6), temp=!!spec.tempLocks;
+  const T=spec.targets, nT=T.length, WJ=spec.junkWeight, aJ=WJ/Math.max(1,spec.junkCount||6), temp=!!spec.tempLocks, pin=spec.pin||[];
   // slots: groups of target indices; a slot is satisfied by any one member ("any of"). Default: one target per slot.
   const slots=(spec.slots&&spec.slots.length)?spec.slots:T.map((_,k)=>[k]);
   const minSlots=Math.max(1,Math.min(slots.length,spec.minSlots||slots.length));   // "any N of these slots" when smaller
@@ -56,7 +59,7 @@ function solve(spec){
     for(let i=0;i<3;i++){
       const cd=codes[tri[i]];
       if(cd.kind===2&&!cd.locked&&nl<2){ const t=tri.slice(); t[i]=codeOf.get(cd.tgt+':'+cd.cls+':1'); lockNext[s*3+i]=sidx(t); if(temp&&!cd.meets) lockFree[s*3+i]=1; }
-      if(cd.locked){ const t=tri.slice(); t[i]=cd.kind===2?codeOf.get(cd.tgt+':'+cd.cls+':0'):1; unlockNext[s*3+i]=sidx(t); }
+      if(cd.locked&&!pin.includes(i)){ const t=tri.slice(); t[i]=cd.kind===2?codeOf.get(cd.tgt+':'+cd.cls+':0'):1; unlockNext[s*3+i]=sidx(t); }
     }
     const ctx=tri.map(x=>codes[x].locked?x:-1); const ck=ctx.join(',');
     if(!ctxIds.has(ck)){ ctxIds.set(ck,chOff.length); const outs=changeOutcomes(ctx); chOff.push(chStates.length); chLen.push(outs.length); outs.forEach(([t,p])=>{ chStates.push(sidx(t)); chProbs.push(p); }); }
