@@ -1824,7 +1824,7 @@ function renderAdvice(){
       // The buffer: the figure 9 pieces in 10 finish within, rounded up to a ten; the hover gives the rarer cases.
       const qm=(!busy&&haveMine&&mine&&mineV>0)?costQuantiles([mine],mineV):null; const safeMine=qm?up10(qm.p90):null;
       $('statLeftSafe').innerHTML=safeMine?`<b>${safeMine}</b> rocks for 90% chance to finish`:'';
-      $('statLeftSafe').title=safeMine?`${mineV} is the average if you follow the advice. 9 times in 10 this piece finishes within ${safeMine}. About 1 in 20 costs more than ${up10(qm.p95)}, and about 1 in 100 more than ${up10(qm.p99)}. With fewer modules than you need, you stop with the piece half done.`:'';
+      $('statLeftSafe').title=safeMine?`${mineV} is the average if you follow the advice. 9 times in 10 this piece finishes within ${safeMine}. About 1 in 20 costs more than ${up10(qm.p95)}, and about 1 in 100 more than ${up10(qm.p99)}. There is a risk of not reaching your desired total rolling outcome if you don’t have enough rocks stockpiled for your goals.`:'';
       $('statLeftDet').innerHTML=busy?'':[(mine&&state.tempLocks&&mine.keys)?`~${Math.round(mine.keys)} temp locks`:'',keepTagHtml([state.active]).trim()].filter(Boolean).join(' · ');
       const sdAll=Math.sqrt(var2);
       $('statAll').innerHTML=busy?'<span class="muted">…</span>':(any?`~${Math.round(tot)}${(spreadOk&&sdAll)?`<span class="cs-pm">±${Math.round(sdAll)}</span>`:''}`:'done');

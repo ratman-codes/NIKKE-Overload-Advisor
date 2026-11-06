@@ -2447,7 +2447,7 @@ function renderAdvice(){
       const up10=v=>Math.ceil(v/10)*10;
       const q=(!busy&&remEV&&remEV.ev>0)?remEV.q:null; const safe=q?up10(q.p90):null;
       $('statLeftSafe').innerHTML=safe?`<b>${safe}</b> rocks for 90% chance to finish`:'';
-      $('statLeftSafe').title=safe?`${remEV.ev} is the average if you follow the advice. 9 builds in 10 finish within ${safe}. About 1 in 20 costs more than ${up10(q.p95)}, and about 1 in 100 more than ${up10(q.p99)}. With fewer modules than you need, you stop with pieces half done.`:'';
+      $('statLeftSafe').title=safe?`${remEV.ev} is the average if you follow the advice. 9 builds in 10 finish within ${safe}. About 1 in 20 costs more than ${up10(q.p95)}, and about 1 in 100 more than ${up10(q.p99)}. There is a risk of not reaching your desired total rolling outcome if you don’t have enough rocks stockpiled for your goals.`:'';
       $('statLeftDet').innerHTML=busy?'':[tl(remEV),keepTagHtml(PIECES).trim()].filter(Boolean).join(' · ');
       $('statFullDet').textContent=busy?'':tl(benchEV);
       $('statFullSub').textContent=(!busy&&keptCount()>0)?'empty unit + kept lines':'from an empty unit';
