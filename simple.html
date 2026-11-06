@@ -326,7 +326,7 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
         <button class="btn-quiet" id="addPassBtn" title="Bonus only: kept if it lands, never rolled for">＋ Passable bonus</button>
         <span style="margin-left:auto;display:inline-flex;gap:6px;align-items:center">
           <label for="valGoal" class="muted" title="Fills every target's min value. You can also set each row yourself. Prydwen's table is in Reference.">Value targets ⓘ</label>
-          <select id="valGoal"><option value="prydwen">Prydwen minimums</option><option value="blue">Blue+ (Tier 12+)</option><option value="black">Black (Tier 15)</option><option value="custom">Custom (per effect)</option></select>
+          <select id="valGoal"><option value="prydwen">Prydwen minimums</option><option value="t10">Tier 10+</option><option value="blue">Blue+ (Tier 12+)</option><option value="black">Black (Tier 15)</option><option value="custom">Custom (per effect)</option></select>
         </span>
         <span id="addPanel"></span>
       </div>
@@ -1915,10 +1915,12 @@ function renderTotals(){
 
 function applyGoalPreset(p){
   if(!state.goalTierBy) state.goalTierBy={};
-  desiredSet().forEach(e=>{ if(p==='blue') state.goalTierBy[e]=Math.max(12,minTier(e)); else if(p==='black') state.goalTierBy[e]=15; else if(p==='prydwen') delete state.goalTierBy[e]; });
+  desiredSet().forEach(e=>{ if(p==='blue') state.goalTierBy[e]=Math.max(12,minTier(e)); else if(p==='t10') state.goalTierBy[e]=Math.max(10,minTier(e)); else if(p==='black') state.goalTierBy[e]=15; else if(p==='prydwen') delete state.goalTierBy[e]; });
 }
 function goalPreset(){
   const effs=desiredSet(); if(!effs.length) return 'prydwen';
+  if(effs.every(e=>goalTier(e)===minTier(e))) return 'prydwen';
+  if(effs.every(e=>goalTier(e)===Math.max(10,minTier(e)))) return 't10';
   const kinds=new Set(effs.map(goalKind)); if(kinds.size!==1) return 'custom';
   const k=[...kinds][0]; return k==='min'?'prydwen':k;
 }
