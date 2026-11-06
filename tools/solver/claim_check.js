@@ -146,31 +146,40 @@
         }
         else if(kind==='change'){
           // rows card (one row per line) when the page has it; otherwise the title's "X lands on Line n" clauses
-          const segs=r.rows?r.rows.filter(x=>x.effects).map(x=>({effs:x.effects.join(' or '),lines:[x.i]}))
+          const segs=r.rows?r.rows.filter(x=>x.effects&&x.effects.length&&!x.pair).map(x=>({effs:x.effects.join(' or '),lines:[x.i],tiers:x.tiers||{}}))
             :plain.replace(/^🔁 Change Effects until /,'').split(', or ').map(seg=>{ const k=seg.lastIndexOf(' lands on Line '); return {effs:seg.slice(0,k), lines:[...seg.slice(k).matchAll(/\d/g)].map(x=>+x[0]-1)}; });
           if(r.rows){ // the title names the counted lines, and the effects only when at most two and the same on every counted line
             const tl=[...(plain.match(/lands on Line ([\d, or]+)$/)||['',''])[1].matchAll(/\d/g)].map(x=>+x[0]-1).sort().join(',');
-            add('rows: title names the counted lines', tl===segs.map(x=>x.lines[0]).sort().join(','), where);
-            const same=segs.every(x=>x.effs===segs[0].effs), n=new Set(segs.flatMap(x=>x.effs.split(' or '))).size;
-            add('rows: title names the effects only when at most two and the same on every line', /until a target lands/.test(plain)?!(same&&n<=2):(same&&n<=2), where);
-            r.rows.forEach(x=>{ if(x.mute&&/^locked · /.test(x.text)) add('rows: "locked" row is a locked line', eff[x.i].locked&&x.text.endsWith(eff[x.i].effect), where);
+            if(segs.length) add('rows: title names the counted lines', tl===segs.map(x=>x.lines[0]).sort().join(','), where); else add('rows: pair-only title', /land together on Lines/.test(plain), where);
+            const same=segs.every(x=>x.effs===segs[0].effs)&&!segs.some(x=>Object.values(x.tiers).some(t=>t>1)), n=new Set(segs.flatMap(x=>x.effs.split(' or '))).size;
+            if(segs.length) add('rows: title names the effects only when at most two and the same on every line', /until a target lands/.test(plain)?!(same&&n<=2):(same&&n<=2), where);
+            r.rows.forEach(x=>{ if(x.pair) return; if(x.mute&&/^locked · /.test(x.text)) add('rows: "locked" row is a locked line', eff[x.i].locked&&x.text.endsWith(eff[x.i].effect), where);
               if(x.mute&&/^temp-lock · /.test(x.text)) add('rows: "temp-lock" row is a held line', held.includes(x.i), where); }); }
           const vCur=await Vw(eff); const landings=[]; let allFull=true; const an=analyze(P);
-          if(r.rows) for(const x of r.rows){ if(!(x.mute&&x.text==='does not count yet')) continue; const s2=eff.map(y=>({...y})); s2[x.i]={effect:'',tier:11,locked:false}; const v=await Vw(s2);
+          // a pair row: both landings together are progress, neither alone is
+          if(r.rows) for(const x of r.rows){ if(!x.pair) continue; for(const [k1,k2] of x.pair){ const e1=groupMembers(k1)[0], e2=groupMembers(k2)[0];
+              const s2=eff.map(l=>l.locked?{...l}:{effect:'',tier:11,locked:false}); s2[x.i]={effect:e1,tier:1,locked:false}; s2[x.j]={effect:e2,tier:1,locked:false}; const v=await Vw(s2);
+              const a1=eff.map(l=>l.locked?{...l}:{effect:'',tier:11,locked:false}); a1[x.i]={effect:e1,tier:1,locked:false}; const v1=await Vw(a1);
+              const a2=eff.map(l=>l.locked?{...l}:{effect:'',tier:11,locked:false}); a2[x.j]={effect:e2,tier:1,locked:false}; const v2=await Vw(a2);
+              add('rows: a pair row counts together and not alone', v!==null&&vCur!==null&&v<vCur-TIE&&v1!==null&&v1>=vCur-TIE&&v2!==null&&v2>=vCur-TIE, where+' → '+e1+' L'+(x.i+1)+' + '+e2+' L'+(x.j+1)+': '+(v===null?'?':v.toFixed(1))+' / alone '+(v1===null?'?':v1.toFixed(1))+', '+(v2===null?'?':v2.toFixed(1))+' vs '+(vCur===null?'?':vCur.toFixed(1))); } }
+          if(r.rows) for(const x of r.rows){ if(!(x.mute&&(x.text==='does not count yet'||x.text==='does not count alone'))) continue; const s2=eff.map(y=>({...y})); s2[x.i]={effect:'',tier:11,locked:false}; const v=await Vw(s2);
             add('rows: a "does not count yet" line is worth nothing', !eff[x.i].locked&&v!==null&&vCur!==null&&v<=vCur+TIE, where+' → Line '+(x.i+1)); }
           const listed=new Set();
           for(const seg of segs){ const es=EFF_NAMES.filter(e=>new RegExp('(^|, | or | / )'+e+'($|,| or | / )').test(seg.effs));
             for(const i of seg.lines) for(const e of es){ if(eff.some(l=>l.locked&&l.effect===e)) continue; listed.add(e+'|'+i);
-              const s2=eff.map(l=>l.locked?{...l}:{effect:'',tier:11,locked:false}); s2[i]={effect:e,tier:1,locked:false}; const v=await Vw(s2); if(v===null) continue;
+              const fl=(seg.tiers&&(seg.tiers[e]||seg.tiers[Object.keys(seg.tiers).find(n=>n.split(' / ').includes(e))]))||1;
+              const s2=eff.map(l=>l.locked?{...l}:{effect:'',tier:11,locked:false}); s2[i]={effect:e,tier:fl,locked:false}; const v=await Vw(s2); if(v===null) continue;
+              // a row's tier floor is the lowest tier from which the landing counts: one tier lower must not count
+              if(fl>1){ const s3=eff.map(l=>l.locked?{...l}:{effect:'',tier:11,locked:false}); s3[i]={effect:e,tier:fl-1,locked:false}; const v3=await Vw(s3); add('rows: tier floor is the lowest tier that counts', v3!==null&&vCur!==null&&v3>=vCur-TIE, where+' → '+e+' on Line '+(i+1)+' at T'+(fl-1)+' gives '+(v3===null?'?':v3.toFixed(1))+' vs '+(vCur===null?'?':vCur.toFixed(1))); }
               // an "any of" group counts when some member lands: members are not checked one by one
               if((cfg.groupEffs||[]).includes(e)){ add('change: a group landing is named', true, ''); continue; }
               add('change: named landing really is progress', vCur!==null&&v<vCur-TIE, where+' → '+e+' on Line '+(i+1)+' gives '+v.toFixed(1)+' vs '+(vCur===null?'?':vCur.toFixed(1)));
               if(!withP(s2,()=>{ const a2=analyze(P); const have=new Set(s2.filter(l=>l.effect).map(l=>keyOf(l.effect))); return a2.desired.filter(d=>have.has(d)).length>=a2.N; })) allFull=false;
-              const q=await Qw(s2); landings.push({i,e,next:q?q.best:-1}); } }
+              const q=await Qw(s2); let nx=(typeof nextAct==='function')?nextAct(P,s2):(q?q.best:-1); if(nx<0&&Exact.busy()){ await wait(); nx=(typeof nextAct==='function')?nextAct(P,s2):(q?q.best:-1); } landings.push({i,e,next:nx}); } }
           // the other way round: a wanted effect whose landing is progress must be in the title (whole unit: any still-open target)
           const open=isSimple?tEffs:reqEffects().flatMap(k=>groupMembers(k)).filter(e=>tEffs.includes(e));
           for(let i=0;i<3;i++){ if(eff[i].locked) continue; for(const e of open){ if(listed.has(e+'|'+i)||eff.some(l=>l.locked&&l.effect===e)) continue;
-            const s2=eff.map(l=>l.locked?{...l}:{effect:'',tier:11,locked:false}); s2[i]={effect:e,tier:1,locked:false}; const v=await Vw(s2); if(v===null||vCur===null) continue;
+            const s2=eff.map(l=>l.locked?{...l}:{effect:'',tier:11,locked:false}); s2[i]={effect:e,tier:r.rows?15:1,locked:false}; const v=await Vw(s2); if(v===null||vCur===null) continue;
             add('change: a landing that is progress is named in the title', v>=vCur-TIE, where+' → '+e+' on Line '+(i+1)+' gives '+v.toFixed(1)+' vs '+vCur.toFixed(1)+' but is not named'); } }
           const nexts=new Set(landings.map(x=>x.next)); let mm;
           if(/then (?:lock|hold) (?:the line it landed on|that line)/.test(body)) landings.forEach(x=>add('change: "hold the line it landed on" is the next move for each landing', x.next===1+x.i, where+' → '+x.e+' on Line '+(x.i+1)+' → solver '+ACT_NAMES[x.next]));
@@ -180,6 +189,7 @@
             else if(/That finishes the piece/.test(body)) add('change: then finished', n===0, where+nb);
             else if(/keep pressing Change Effects for the rest/.test(body)) add('change: then keep changing, no lock', n===7, where+nb);
             else if(/Then unlock [A-Za-z ]+ on Line \d \(free\)/.test(body)) add('change: then unlock a line', n>=4&&n<=6, where+nb);
+            else if(/The temp lock on Line \d then ends by itself/.test(body)) add('change: then the temp lock ends (an unlock of the held line)', n>=4&&n<=6, where+nb);
             else if(/enter the new roll here/.test(body)) add('change: no next claim', true, '');
             else add('change: next sentence missing', false, where); }
           else if(nexts.size>1) add('change: several next moves, no single next claim', /enter the new roll here/.test(body), where);
