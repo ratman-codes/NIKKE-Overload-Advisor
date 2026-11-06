@@ -145,8 +145,19 @@
             const want=[...new Set(src.map(i=>Math.round(100*pAtLeast(goalTier(eff[i].effect)))))]; add('reset: quoted hit chance matches the target', ps.every(p=>want.includes(p)), where); });
         }
         else if(kind==='change'){
-          const segs=plain.replace(/^🔁 Change Effects until /,'').split(', or ').map(seg=>{ const k=seg.lastIndexOf(' lands on Line '); return {effs:seg.slice(0,k), lines:[...seg.slice(k).matchAll(/\d/g)].map(x=>+x[0]-1)}; });
+          // rows card (one row per line) when the page has it; otherwise the title's "X lands on Line n" clauses
+          const segs=r.rows?r.rows.filter(x=>x.effects).map(x=>({effs:x.effects.join(' or '),lines:[x.i]}))
+            :plain.replace(/^🔁 Change Effects until /,'').split(', or ').map(seg=>{ const k=seg.lastIndexOf(' lands on Line '); return {effs:seg.slice(0,k), lines:[...seg.slice(k).matchAll(/\d/g)].map(x=>+x[0]-1)}; });
+          if(r.rows){ // the title names the counted lines, and the effects only when at most two and the same on every counted line
+            const tl=[...(plain.match(/lands on Line ([\d, or]+)$/)||['',''])[1].matchAll(/\d/g)].map(x=>+x[0]-1).sort().join(',');
+            add('rows: title names the counted lines', tl===segs.map(x=>x.lines[0]).sort().join(','), where);
+            const same=segs.every(x=>x.effs===segs[0].effs), n=new Set(segs.flatMap(x=>x.effs.split(' or '))).size;
+            add('rows: title names the effects only when at most two and the same on every line', /until a target lands/.test(plain)?!(same&&n<=2):(same&&n<=2), where);
+            r.rows.forEach(x=>{ if(x.mute&&/^locked · /.test(x.text)) add('rows: "locked" row is a locked line', eff[x.i].locked&&x.text.endsWith(eff[x.i].effect), where);
+              if(x.mute&&/^temp-lock · /.test(x.text)) add('rows: "temp-lock" row is a held line', held.includes(x.i), where); }); }
           const vCur=await Vw(eff); const landings=[]; let allFull=true; const an=analyze(P);
+          if(r.rows) for(const x of r.rows){ if(!(x.mute&&x.text==='does not count yet')) continue; const s2=eff.map(y=>({...y})); s2[x.i]={effect:'',tier:11,locked:false}; const v=await Vw(s2);
+            add('rows: a "does not count yet" line is worth nothing', !eff[x.i].locked&&v!==null&&vCur!==null&&v<=vCur+TIE, where+' → Line '+(x.i+1)); }
           const listed=new Set();
           for(const seg of segs){ const es=EFF_NAMES.filter(e=>new RegExp('(^|, | or | / )'+e+'($|,| or | / )').test(seg.effs));
             for(const i of seg.lines) for(const e of es){ if(eff.some(l=>l.locked&&l.effect===e)) continue; listed.add(e+'|'+i);
@@ -162,7 +173,7 @@
             const s2=eff.map(l=>l.locked?{...l}:{effect:'',tier:11,locked:false}); s2[i]={effect:e,tier:1,locked:false}; const v=await Vw(s2); if(v===null||vCur===null) continue;
             add('change: a landing that is progress is named in the title', v>=vCur-TIE, where+' → '+e+' on Line '+(i+1)+' gives '+v.toFixed(1)+' vs '+vCur.toFixed(1)+' but is not named'); } }
           const nexts=new Set(landings.map(x=>x.next)); let mm;
-          if(/then (?:lock|hold) the line it landed on/.test(body)) landings.forEach(x=>add('change: "hold the line it landed on" is the next move for each landing', x.next===1+x.i, where+' → '+x.e+' on Line '+(x.i+1)+' → solver '+ACT_NAMES[x.next]));
+          if(/then (?:lock|hold) (?:the line it landed on|that line)/.test(body)) landings.forEach(x=>add('change: "hold the line it landed on" is the next move for each landing', x.next===1+x.i, where+' → '+x.e+' on Line '+(x.i+1)+' → solver '+ACT_NAMES[x.next]));
           else if((mm=body.match(/then (?:lock|hold) Line (\d)/))) landings.forEach(x=>add('change: "then hold Line n" is the next move for each landing', x.next===+mm[1], where+' → '+x.e+' on Line '+(x.i+1)+' → solver '+ACT_NAMES[x.next]));
           else if(nexts.size===1){ const n=[...nexts][0]; const nb=' → solver '+ACT_NAMES[n];
             if(/next step is Reset Attributes/.test(body)) add('change: then Reset Attributes', n===8, where+nb);

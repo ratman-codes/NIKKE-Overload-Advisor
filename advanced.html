@@ -94,6 +94,10 @@
   .step.pending{border-color:var(--line);color:var(--muted)}
   .step.pending h3{color:var(--muted);font-weight:500}
   .step h3{margin:0 0 6px;font-size:17px}
+  /* Change Effects card: one row per line, in the game's order, saying what counts there */
+  .lrows{display:grid;grid-template-columns:52px minmax(0,1fr);row-gap:2px;margin:2px 0 10px;font-size:13.5px}
+  .lrows .k,.lrows .mute{color:var(--muted)}
+  .lrows .or{color:var(--muted);font-size:12px;margin:0 5px}
   .step .why{color:var(--muted);font-size:13.5px;margin-top:8px}
   .pill{display:inline-block;font-size:12px;padding:2px 9px;border-radius:20px;border:1px solid var(--line);background:#12161c;margin-right:6px}
   .lines{display:grid;gap:8px;margin-top:6px}
@@ -1170,10 +1174,11 @@ function recommend(piece){
   const nPerm=state.pieces[piece].filter(l=>l.locked).length;
   let keys=0; held.forEach((_,j)=>keys+=10*(nPerm+j+1)+10);
   const names=held.map(i=>'Line '+(i+1)).join(' + ');
+  const rows=cur.rows?cur.rows.map(r=>held.includes(r.i)?{i:r.i,mute:true,text:`temp-lock · ${state.pieces[piece][r.i].effect}`}:r):undefined;
   return Object.assign({},cur,{
-    risk:cur.risk||rec.risk, a:rec.a,
+    risk:cur.risk||rec.risk, a:rec.a, rows,
     title:`🔑 Temp-lock ${names} + ${cur.title}`,
-    body:`Temp-lock ${held.map(i=>`${state.pieces[piece][i].effect} on Line ${i+1}`).join(' and ')} for this roll, then: ${cur.body||''}<span class="muted"> Reapply the temp lock each roll with "load previous lock settings".</span>`,
+    body:`Temp-lock ${held.map(i=>`${state.pieces[piece][i].effect} on Line ${i+1}`).join(' and ')} for this roll${rows?'. ':', then: '}${cur.body||''}<span class="muted"> Reapply the temp lock each roll with "load previous lock settings".</span>`,
     cost:`${cur.cost?cur.cost+' · ':''}+ ${keys} temp locks per roll`});
 }
 // A line counts as SECURED (for display) only when it will survive: locked, temp-held by the
@@ -2043,14 +2048,17 @@ function withChangeGoal(piece,rec,tail){
       if(!withLines(piece,bl,()=>{ const a2=analyze(piece); const have=new Set(bl.filter(l=>l.effect).map(l=>keyOf(l.effect))); return a2.desired.filter(d=>have.has(d)).length>=a2.N; })) full=false; }
   }); });
   const idx=Object.keys(onLine).map(Number).sort(); if(!idx.length) return rec;
-  const eff=i=>_orList(onLine[i].map(_nk));
+  // Title: the lines that count; the effects too when there are at most two and the same on every counted line.
+  // The rows under the title carry the full list, line by line, in the game's order.
   const same=idx.every(i=>onLine[i].join('|')===onLine[idx[0]].join('|'));
-  const parts=same?[[eff(idx[0]),'Line '+_orList(idx.map(i=>i+1))]]:idx.slice().reverse().map(i=>[eff(i),'Line '+(i+1)]);
+  const keysAll=[...new Set(idx.flatMap(i=>onLine[i]))];
+  const what=(same&&keysAll.length<=2)?_orList(keysAll.map(_nk)):'a target';
+  const title=`🔁 Change Effects until ${what} lands on Line ${_orList(idx.map(i=>i+1))}`;
   // one next move for every counted landing; "hold the line it landed on" also covers a Line 2 landing followed
   // by a lock of Line 2 and a Line 3 landing followed by a lock of Line 3
   const nx=nexts.size===1?[...nexts][0]:(holdLanded?1:-1);
   // the line the lock goes on: the landed line, or (one landing, a lock elsewhere) the solver's line
-  const one=holdLanded?(idx.length===1?`Line ${idx[0]+1}`:'the line it landed on'):`Line ${nx}`;
+  const one=holdLanded?(idx.length===1?`Line ${idx[0]+1}`:'that line'):`Line ${nx}`;
   const take=' When it does, press Change to take the roll';
   const then=(nx>=1&&nx<=3)?(state.tempLocks?`${take}, then hold ${one} on every later roll of this piece. This piece's next step says whether with a lock or a temp lock.`:`${take}, then lock ${one} so it is not lost while you roll for the rest.`)
             :nx===8?(full?`${take}. Every effect is then on the piece, and the next step is Reset Attributes to raise the values.`:`${take}. The next step is Reset Attributes, to raise its value before it is locked.`)
@@ -2060,7 +2068,14 @@ function withChangeGoal(piece,rec,tail){
             :nexts.size>1?`${take}, then enter the new roll here: the next step depends on which effect landed.`
             :`${take}, then enter the new roll here for the next step.`;
   // free lines where a landing does not count yet, and what sits on them is worth nothing
-  const dead=[0,1].filter(i=>!cur[i].locked&&!onLine[i]).filter(i=>{ const ls=_copy(cur); ls[i]={effect:'',tier:11,locked:false}; const v=unitValue(piece,ls); return v!==null&&v<=vCur+EXACT_TIE; });
+  const deadOf=i=>{ const ls=_copy(cur); ls[i]={effect:'',tier:11,locked:false}; const v=unitValue(piece,ls); return v!==null&&v<=vCur+EXACT_TIE; };
+  const dead=[0,1].filter(i=>!cur[i].locked&&!onLine[i]).filter(deadOf);
+  // one row per line: what counts there, or why nothing does
+  const rows=[0,1,2].map(i=>{ const l=cur[i];
+    if(l.locked) return {i,mute:true,text:`locked · ${l.effect}`};
+    if(onLine[i]) return {i,effects:onLine[i].map(_nk)};
+    if(l.effect&&_wanted(a,l)&&!deadOf(i)) return {i,mute:true,text:`${l.effect} · worth keeping: press Keep if a roll loses it`};
+    return {i,mute:true,text:'does not count yet'}; });
   let note='';
   if(dead.length===2) note=' Lines 1 and 2 do not count yet: they roll an effect more often than Line 3 (every time and half the time, against 30%), so they are filled after it.';
   else if(dead[0]===0) note=' Line 1 does not count yet: it rolls an effect every time, so it is the easiest line to fill and comes last.';
@@ -2074,9 +2089,12 @@ function withChangeGoal(piece,rec,tail){
   const also=moved.size?` ${_orList([...moved].map(_nk),'and')} ${moved.size>1?'are':'is'} planned for another piece, but worth taking here: the plan then moves it.`:'';
   // the rules' warning about a rare Line 1 roll stays only when that roll is worth something
   const warns=dead.includes(0)?'':_notes(rec,'warn');
+  // the body is what to do when a target lands; the rare-line pointer stays with it, the rest folds into Why & alternatives
+  const rareSent=(note.match(/ This also rerolls your [^.]*\./)||[''])[0];
+  const quiet=note.replace(rareSent,'').trim();
   return Object.assign({},rec,{
-    title:`🔁 Change Effects until ${parts.map(p=>`${p[0]} lands on ${p[1]}`).join(', or ')}`,
-    body:`Press <b>Change Effects</b> until ${parts.map(p=>`<b>${p[0]}</b> lands on <b>${p[1]}</b>`).join(', or ')}.${then}${also}${note}${warns}${tail||''}`});
+    title, rows,
+    body:`${then.trim()}${also}${rareSent}${quiet?`<span class="muted"> ${quiet}</span>`:''}${warns}${tail||''}`});
 }
 // Reset Attributes: which lines to watch, and for each whether the solver locks it when it hits.
 function withResetCard(piece,rec,tail){
@@ -2567,6 +2585,8 @@ function renderAdvice(){
     else if(got.length) securedLine=`<div class="secured">Secured on ${target}: ${got.join(' · ')}</div>`;
   }
   const tag=allMet?'':`<span class="ptag">${target}${a?` · ${securedCount(target)} / ${a.N} secured`:''}</span>`;
+  const rowsHtml=rec.rows?`<div class="lrows">${rec.rows.map(r=>`<span class="k">Line ${r.i+1}</span><span${r.mute?' class="mute"':''}>${r.mute?r.text:r.effects.map((e,k)=>`${k?'<span class="or">or</span>':''}${e}`).join('')}</span>`).join('')}</div>`:'';
+  if(rec.rows&&riskLine){ whyItems.unshift(riskLine.replace('<div class="riskline">','<span class="warn">').replace(/<\/div>$/,'</span>')); riskLine=''; }
   const pillsHtml=(rec.cost||evPill)?`<div style="margin-top:8px">${rec.cost?`<span class="pill">${rec.cost}</span><span class="pill">${riskLabel(rec.risk)}</span>`:''}${rec.exact==='ok'?'<span class="pill" title="Checked against the exact solver">✓ exact</span>':(rec.exact==='pending'?'<span class="pill">checking exactly…</span>':'')}${evPill}</div>`:'';
   // last resort: no solver at all in this browser
   if(!Exact.available()) adv.appendChild(h(`<div class="riskline">⚠ The exact solver could not start in this browser. The moves below come from the older rule set and are not checked, and costs are rough estimates. Use a current version of Chrome, Edge, Firefox or Safari for exact advice.</div>`));
@@ -2587,11 +2607,11 @@ function renderAdvice(){
       const t=_plain(ar.title); const held=new Set(); if(aa>=1&&aa<=3) held.add(aa-1); if(t.includes('Temp-lock')){ [...t.matchAll(/Temp-lock Line (\d)/g)].forEach(m=>held.add(+m[1]-1)); [...t.matchAll(/\+ Line (\d)/g)].forEach(m=>held.add(+m[1]-1)); }
       const open=state.pieces[ac].map((l,i)=>({l,i})).filter(o=>held.has(o.i)&&!o.l.locked&&_wanted(al,o.l));
       if(open.length&&ar.risk!=='done') safeNote=` ${_orList(open.map(o=>`${o.l.effect} on Line ${o.i+1}`),'and')} of ${ac} ${open.length>1?'are':'is'} safe until ${ac} is rolled${aa>=1&&aa<=3?`; the lock comes when ${ac} is next (box 2 shows the step)`:`; hold it then (box 2 shows the step)`}.`; }
-    const gate=h(`<div class="gate"><div class="top"><span class="warnico">⚠️</span><b>Switch to ${target} before you roll</b><span class="muted">This move is for ${target}, not ${state.active}.${safeNote}</span><button class="btn-primary big">Switch to ${target}</button></div><div class="next"><div class="tag">Then, on ${target}:</div><h3>${rec.title}</h3>${cleanBody?`<div style="font-size:13.5px">${cleanBody}</div>`:''}${riskLine}${pillsHtml}</div></div>`);
+    const gate=h(`<div class="gate"><div class="top"><span class="warnico">⚠️</span><b>Switch to ${target} before you roll</b><span class="muted">This move is for ${target}, not ${state.active}.${safeNote}</span><button class="btn-primary big">Switch to ${target}</button></div><div class="next"><div class="tag">Then, on ${target}:</div><h3>${rec.title}</h3>${rowsHtml}${cleanBody?`<div style="font-size:13.5px">${cleanBody}</div>`:''}${riskLine}${pillsHtml}</div></div>`);
     gate.querySelector('button').onclick=()=>{ state.active=target; save(); renderAll(); };
     adv.appendChild(gate);
   }else{
-    const step=h(`<div class="step ${rec.risk}"><h3>${rec.title}${tag?` ${tag}`:''}</h3>${cleanBody?`<div style="font-size:13.5px">${cleanBody}</div>`:''}${riskLine}${securedLine}${pillsHtml}</div>`);
+    const step=h(`<div class="step ${rec.risk}"><h3>${rec.title}${tag?` ${tag}`:''}</h3>${rowsHtml}${cleanBody?`<div style="font-size:13.5px">${cleanBody}</div>`:''}${riskLine}${securedLine}${pillsHtml}</div>`);
     adv.appendChild(step);
   }
 

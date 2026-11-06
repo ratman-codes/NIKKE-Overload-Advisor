@@ -83,6 +83,10 @@
   .step.pending{border-color:var(--line);color:var(--muted)}
   .step.pending h3{color:var(--muted);font-weight:500}
   .step h3{margin:0 0 6px;font-size:17px}
+  /* Change Effects card: one row per line, in the game's order, saying what counts there */
+  .lrows{display:grid;grid-template-columns:52px minmax(0,1fr);row-gap:2px;margin:2px 0 10px;font-size:13.5px}
+  .lrows .k,.lrows .mute{color:var(--muted)}
+  .lrows .or{color:var(--muted);font-size:12px;margin:0 5px}
   .step .why{color:var(--muted);font-size:13.5px;margin-top:8px}
   .pill{display:inline-block;font-size:12px;padding:2px 9px;border-radius:20px;border:1px solid var(--line);background:#12161c;margin-right:6px}
   .lines{display:grid;gap:8px;margin-top:6px}
@@ -745,10 +749,11 @@ function recommend(piece){
   const nPerm=state.pieces[piece].filter(l=>l.locked).length;
   let keys=0; held.forEach((_,j)=>keys+=10*(nPerm+j+1)+10);
   const names=held.map(i=>'Line '+(i+1)).join(' + ');
-  return Object.assign({},cur,{
+  const rows=cur.rows?cur.rows.map(r=>held.includes(r.i)?{i:r.i,mute:true,text:`temp-lock · ${state.pieces[piece][r.i].effect}`}:r):undefined;
+  return Object.assign({},cur,{ rows,
     risk:cur.risk||rec.risk, a:rec.a,
     title:`🔑 Temp-lock ${names} + ${cur.title}`,
-    body:`Temp-lock ${held.map(i=>`${state.pieces[piece][i].effect} on Line ${i+1}`).join(' and ')} for this roll, then: ${cur.body||''}<span class="muted"> Reapply the temp lock each roll with "load previous lock settings".</span>`,
+    body:`Temp-lock ${held.map(i=>`${state.pieces[piece][i].effect} on Line ${i+1}`).join(' and ')} for this roll${rows?'. ':', then: '}${cur.body||''}<span class="muted"> Reapply the temp lock each roll with "load previous lock settings".</span>`,
     cost:`${cur.cost?cur.cost+' · ':''}+ ${keys} temp locks per roll`});
 }
 // A line counts as SECURED (for display) only when it will survive: locked, temp-held by the
@@ -1401,21 +1406,24 @@ function withChangeGoal(piece,rec,tail){
   const cur=state.pieces[piece]; const vCur=Exact.value(piece,cur); if(vCur===null) return rec;
   const a=rec.a||analyze(piece);
   const blank=()=>cur.map(l=>l.locked?{effect:l.effect,tier:l.tier,locked:true}:{effect:'',tier:11,locked:false});
-  const onLine={}; const nexts=new Set(), sents=new Set(); let full=true;
+  const onLine={}; const nexts=new Set(), sents=new Set(); let full=true, holdLanded=true;   // holdLanded: every counted landing is followed by a lock of that same line
   [0,1,2].filter(i=>!cur[i].locked).forEach(i=>{ a.desired.forEach(k=>{
     let bv=null, bl=null;
     groupMembers(k).forEach(e=>{ const ls=blank(); ls[i]={effect:e,tier:1,locked:false}; const v=Exact.value(piece,ls); if(v!==null&&(bv===null||v<bv)){ bv=v; bl=ls; } });
-    if(bv!==null && bv<vCur-EXACT_TIE){ (onLine[i]=onLine[i]||[]).push(k); const q=Exact.qvalues(piece,bl); nexts.add(q?q.best:-1); sents.add(nextSentence(piece,a,bl));
+    if(bv!==null && bv<vCur-EXACT_TIE){ (onLine[i]=onLine[i]||[]).push(k); const q=Exact.qvalues(piece,bl); nexts.add(q?q.best:-1); sents.add(nextSentence(piece,a,bl)); if(!q||q.best!==1+i) holdLanded=false;
       const have=new Set(bl.filter(l=>l.effect).map(l=>keyOf(l.effect))); if(a.desired.filter(d=>have.has(d)).length<a.N) full=false; }
   }); });
   const idx=Object.keys(onLine).map(Number).sort(); if(!idx.length) return rec;
-  const eff=i=>_orList(onLine[i].map(_nk));
+  // Title: the lines that count; the effects too when there are at most two and the same on every counted line.
+  // The rows under the title carry the full list, line by line, in the game's order.
   const same=idx.every(i=>onLine[i].join('|')===onLine[idx[0]].join('|'));
-  const parts=same?[[eff(idx[0]),'Line '+_orList(idx.map(i=>i+1))]]:idx.slice().reverse().map(i=>[eff(i),'Line '+(i+1)]);
-  const nx=nexts.size===1?[...nexts][0]:-1;
-  const one=idx.length===1?`Line ${idx[0]+1}`:'the line it landed on';
+  const keysAll=[...new Set(idx.flatMap(i=>onLine[i]))];
+  const what=(same&&keysAll.length<=2)?_orList(keysAll.map(_nk)):'a target';
+  const title=`🔁 Change Effects until ${what} lands on Line ${_orList(idx.map(i=>i+1))}`;
+  const nx=nexts.size===1?[...nexts][0]:(holdLanded?1:-1);
+  const one=holdLanded?(idx.length===1?`Line ${idx[0]+1}`:'that line'):`Line ${nx}`;
   const take=' When it does, press Change to take the roll';
-  const then=(nx>=1&&nx<=3)?(state.tempLocks?`${take}, then hold ${one} for the rolls that follow. The next step says whether with a lock or a temp lock.`:`${take}, then lock ${one} so it is not lost while you roll for the rest.`)
+  const then=(nx>=1&&nx<=3)?(state.tempLocks?`${take}, then hold ${one} on every later roll. The next step says whether with a lock or a temp lock.`:`${take}, then lock ${one} so it is not lost while you roll for the rest.`)
             :nx===8?(full?`${take}. Every effect is then on the piece, and the next step is Reset Attributes to raise the values.`:`${take}. The next step is Reset Attributes, to raise its value before it is locked.`)
             :nx===0?`${take}. That finishes the piece.`
             :nx===7?`${take}, then keep pressing Change Effects for the rest. No lock is needed yet.`
@@ -1423,7 +1431,14 @@ function withChangeGoal(piece,rec,tail){
             :nexts.size>1?`${take}, then enter the new roll here: the next step depends on which effect landed.`
             :`${take}, then enter the new roll here for the next step.`;
   // free lines where a landing does not count yet, and what sits on them is worth nothing
-  const dead=[0,1].filter(i=>!cur[i].locked&&!onLine[i]).filter(i=>{ const ls=_copy(cur); ls[i]={effect:'',tier:11,locked:false}; const v=Exact.value(piece,ls); return v!==null&&v<=vCur+EXACT_TIE; });
+  const deadOf=i=>{ const ls=_copy(cur); ls[i]={effect:'',tier:11,locked:false}; const v=Exact.value(piece,ls); return v!==null&&v<=vCur+EXACT_TIE; };
+  const dead=[0,1].filter(i=>!cur[i].locked&&!onLine[i]).filter(deadOf);
+  // one row per line: what counts there, or why nothing does
+  const rows=[0,1,2].map(i=>{ const l=cur[i];
+    if(l.locked) return {i,mute:true,text:`locked · ${l.effect}`};
+    if(onLine[i]) return {i,effects:onLine[i].map(_nk)};
+    if(l.effect&&_wanted(a,l)&&!deadOf(i)) return {i,mute:true,text:`${l.effect} · worth keeping: press Keep if a roll loses it`};
+    return {i,mute:true,text:'does not count yet'}; });
   let note='';
   if(dead.length===2) note=' Lines 1 and 2 do not count yet: they roll an effect more often than Line 3 (every time and half the time, against 30%), so they are filled after it.';
   else if(dead[0]===0) note=' Line 1 does not count yet: it rolls an effect every time, so it is the easiest line to fill and comes last.';
@@ -1435,9 +1450,12 @@ function withChangeGoal(piece,rec,tail){
   if(rareLost.length) note+=` This also rerolls your ${_orList(rareLost,'and')}: see the choice above the move.`;
   // the rules' warning about a rare Line 1 roll stays only when that roll is worth something
   const warns=dead.includes(0)?'':_notes(rec,'warn');
+  // the body is what to do when a target lands; the rare-line pointer stays with it, the rest folds into Why & alternatives
+  const rareSent=(note.match(/ This also rerolls your [^.]*\./)||[''])[0];
+  const quiet=note.replace(rareSent,'').trim();
   return Object.assign({},rec,{
-    title:`🔁 Change Effects until ${parts.map(p=>`${p[0]} lands on ${p[1]}`).join(', or ')}`,
-    body:`Press <b>Change Effects</b> until ${parts.map(p=>`<b>${p[0]}</b> lands on <b>${p[1]}</b>`).join(', or ')}.${then}${note}${warns}${tail||''}`});
+    title, rows,
+    body:`${then.trim()}${rareSent}${quiet?`<span class="muted"> ${quiet}</span>`:''}${warns}${tail||''}`});
 }
 // Reset Attributes: which lines to watch, and for each whether the solver locks it when it hits.
 function withResetCard(piece,rec,tail){
@@ -1838,7 +1856,9 @@ function renderAdvice(){
     }
   }
   // while the exact table is still computing (well under a second): a placeholder, never a move that could change
-  const step=rec.exact==='pending'?h(`<div class="step pending"><h3>Working out the exact move…</h3></div>`):h(`<div class="step ${rec.risk}"><h3>${rec.title}</h3>${cleanBody?`<div style="font-size:13.5px">${cleanBody}</div>`:''}${riskLine}${securedLine}${(rec.cost||evPill)?`<div style="margin-top:8px">${rec.cost?`<span class="pill">${rec.cost}</span><span class="pill">${riskLabel(rec.risk)}</span>`:''}${rec.exact==='ok'?'<span class="pill" title="Checked against the exact solver">✓ exact</span>':(rec.exact==='pending'?'<span class="pill">checking exactly…</span>':'')}${evPill}</div>`:''}</div>`);
+  const rowsHtml=rec.rows?`<div class="lrows">${rec.rows.map(r=>`<span class="k">Line ${r.i+1}</span><span${r.mute?' class="mute"':''}>${r.mute?r.text:r.effects.map((e,k)=>`${k?'<span class="or">or</span>':''}${e}`).join('')}</span>`).join('')}</div>`:'';
+  if(rec.rows&&riskLine){ whyItems.unshift(riskLine.replace('<div class="riskline">','<span class="warn">').replace(/<\/div>$/,'</span>')); riskLine=''; }
+  const step=rec.exact==='pending'?h(`<div class="step pending"><h3>Working out the exact move…</h3></div>`):h(`<div class="step ${rec.risk}"><h3>${rec.title}</h3>${rowsHtml}${cleanBody?`<div style="font-size:13.5px">${cleanBody}</div>`:''}${riskLine}${securedLine}${(rec.cost||evPill)?`<div style="margin-top:8px">${rec.cost?`<span class="pill">${rec.cost}</span><span class="pill">${riskLabel(rec.risk)}</span>`:''}${rec.exact==='ok'?'<span class="pill" title="Checked against the exact solver">✓ exact</span>':(rec.exact==='pending'?'<span class="pill">checking exactly…</span>':'')}${evPill}</div>`:''}</div>`);
   // last resort: no solver at all in this browser
   if(!Exact.available()) adv.appendChild(h(`<div class="riskline">⚠ The exact solver could not start in this browser. The moves below come from the older rule set and are not checked, and costs are rough estimates. Use a current version of Chrome, Edge, Firefox or Safari for exact advice.</div>`));
   // a wrongly entered piece that is not the one being advised on still gets its message

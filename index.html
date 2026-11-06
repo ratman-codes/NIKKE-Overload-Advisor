@@ -76,7 +76,7 @@
 
   // New-version check. No version number to maintain: the server (GitHub Pages, or any web server) sends an
   // ETag or Last-Modified for each file. The three files are asked for with HEAD requests, bypassing the
-  // browser cache, right after load and then every 10 minutes and whenever the tab is shown again; when any
+  // browser cache, right after load and then every minute and whenever the tab is shown again; when any
   // stamp differs from the one at load, the bar appears. Does nothing when opened from a file:// path or when
   // the server sends no stamp. The inner pages keep their saves in localStorage, so a refresh loses nothing.
   (function(){
@@ -96,7 +96,10 @@
       if(changed) bar.classList.add('show');
     }
     check();
-    timer=setInterval(check,10*60*1000);
+    // Every minute: three tiny HEAD requests. Faster buys nothing (GitHub Pages caches each file for ~10 minutes
+    // on its side, so the answer cannot change sooner) and costs battery and goodwill. The tab-focus check is
+    // the usual trigger anyway.
+    timer=setInterval(check,60*1000);
     document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') check(); });
   })();
 </script>
