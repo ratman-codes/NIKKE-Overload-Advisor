@@ -413,7 +413,7 @@ if(window.self!==window.top)document.documentElement.classList.add('embedded');<
 
   <!-- ================= PIECES ================= -->
   <div class="card">
-    <div class="h2row"><h2>2 · Enter the gear pieces</h2><span class="muted" style="font-size:12.5px">Enter all four pieces as they look in the game. Tick Locked on any line you have locked.</span><div class="h2tools"><div class="unitprog" id="unitProg" style="display:none"><span class="bar2"><i id="unitProgBar"></i></span><span id="unitProgText"></span></div><label class="switch allsw" title="Stack all four pieces top to bottom instead of one tab at a time"><input type="checkbox" id="allSwitch"><span class="track"></span><span>Show all four pieces</span></label></div></div>
+    <div class="h2row"><h2>2 · Enter the gear pieces</h2><span class="muted" style="font-size:12.5px">Enter all four pieces as they look in the game. Tick Locked on any line you have locked.</span><div class="h2tools"><label class="switch allsw" title="Stack all four pieces top to bottom instead of one tab at a time"><input type="checkbox" id="allSwitch"><span class="track"></span><span>Show all four pieces</span></label></div></div>
     <div class="side" id="pieceEntry">
       <div>
         <div class="pgrid" id="pieceTabs"></div>
@@ -2710,19 +2710,10 @@ function renderAdvice(){
     adv.appendChild(step);
   }
 
-  // ---- unit progress line in section 2 ----
-  const up=document.getElementById('unitProg');
-  if(up){
-    if(!reqd){ up.style.display='none'; }
-    else{
-      const tot=totalReqLines();
-      const sec=Math.min(tot,securedTotal());
-      const fin=PIECES.filter(p=>recommend(p).risk==='done').length;
-      up.style.display='flex';
-      document.getElementById('unitProgBar').style.width=(tot?Math.round(100*sec/tot):0)+'%';
-      document.getElementById('unitProgText').textContent=`${sec} of ${tot} lines secured · ${fin} of 4 pieces finished`;
-    }
-  }
+  // ---- lines secured / pieces finished: under the Progress figure in section 3 (was a second header line in box 2) ----
+  { const sub=document.getElementById('costPctSub');
+    if(sub&&reqd){ const tot=totalReqLines(); const sec=Math.min(tot,securedTotal()); const fin=PIECES.filter(p=>recommend(p).risk==='done').length;
+      sub.textContent=`${sec} of ${tot} lines secured · ${fin} of 4 pieces finished`; } }
 
   if(whyItems.length && rec.exact!=='pending')
     adv.appendChild(h(`<details class="why"><summary>Why &amp; alternatives</summary><div class="wb">${whyItems.map(w=>`<div>${w}</div>`).join('')}</div></details>`));
