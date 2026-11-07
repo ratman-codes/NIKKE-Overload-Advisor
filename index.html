@@ -69,8 +69,9 @@
   // Reset acts on whichever tab is showing; each inner app owns its confirm + wipe.
   document.getElementById('btnReset').onclick=()=>{
     const which=document.getElementById('tabSimple').classList.contains('active')?'fSimple':'fAdv';
-    const w=document.getElementById(which).contentWindow;
-    if(w && typeof w.resetEverything==='function') w.resetEverything();
+    // a message, not a direct call: from a file:// path the browser treats each page as a different origin and
+    // blocks the call; the page resets itself when it hears the message
+    document.getElementById(which).contentWindow.postMessage({nikkeOL:'reset'},'*');
   };
   sel(localStorage.getItem(KEY)==='simple'?'simple':'adv');   // Whole unit is the default
 

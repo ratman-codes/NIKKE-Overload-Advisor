@@ -2100,6 +2100,8 @@ function buildStatTable(){
 document.getElementById('targetN').onchange=e=>{state.N=+e.target.value;save();renderAll();};
 document.getElementById('clearPiece').onclick=()=>{state.pieces[state.active]=[0,1,2].map(()=>({effect:'',tier:11,locked:false}));save();renderAll();};
 // Called by the shell's top-bar Reset button (same-origin iframe); also usable standalone.
+// the tab shell asks for a reset by message (works from a file:// path too, where a direct call is blocked)
+window.addEventListener('message',ev=>{ if(ev.data&&ev.data.nikkeOL==='reset'&&window.parent&&ev.source===window.parent) window.resetEverything(); });
 window.resetEverything=function(){
   if(!confirm('Reset everything? This clears your targets, category, and all four gear pieces.')) return;
   localStorage.removeItem('nikkeOL');
