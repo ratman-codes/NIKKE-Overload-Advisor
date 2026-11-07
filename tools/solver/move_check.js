@@ -18,12 +18,13 @@
     {name:'twogroups',keys:[EL,G1,G2],effs:[EL,CR,CD,CS,CH],N:3,tiers:[3,13]},
     {name:'passable',keys:[EL,'ATK'],pass:[AM],effs:[EL,'ATK',AM],N:2},
     {name:'group+passable',keys:[EL,G1],pass:['ATK'],effs:[EL,CR,CD,'ATK'],N:2,tiers:[3,13]} ]
+    .concat([{name:'kept blue Ele',keys:[EL,'ATK',AM],effs:[EL,'ATK',AM],keep:{[EL]:12},N:3,tiers:[3,13]},{name:'group mixed goals',keys:[EL,G1],effs:[EL,CR,CD],goal:{[CR]:8,[CD]:12},N:2,tiers:[3,9,13]},{name:'group of three',keys:[EL,groupKey([CR,CD,CS])],effs:[EL,CR,CD,CS],N:2,tiers:[3,13]}])
     .concat(isSimple?[{name:'any2of3',keys:[EL,'ATK',AM],effs:[EL,'ATK',AM],N:2},{name:'group',keys:[EL,'ATK',G1],effs:[EL,'ATK',CR,CD],N:3,tiers:[3,13]}]
       // whole unit, targets below x4: the plan may move a target between pieces, so the piece's own target set changes with its lines
       :[{name:'spare 4/4/2',keys:[EL,'ATK',AM],effs:[EL,'ATK',AM],req:{[EL]:4,'ATK':4,[AM]:2},N:3},{name:'spare 4/2/2',keys:[EL,'ATK',AM],effs:[EL,'ATK',AM],req:{[EL]:4,'ATK':2,[AM]:2},N:3}]);
   const setup=isSimple
-    ? (cfg,temp)=>{ Object.keys(state.roles).forEach(k=>{ if(EFF_NAMES.includes(k)) state.roles[k]='Off'; else delete state.roles[k]; }); cfg.keys.forEach(k=>state.roles[k]='Target'); (cfg.pass||[]).forEach(k=>state.roles[k]='Passable'); state.goalTierBy=Object.assign({},cfg.goal||{}); state.N=cfg.N; state.tempLocks=temp; delete state.keep; delete state.rareOk; }
-    : (cfg,temp)=>{ state.req=Object.fromEntries(cfg.keys.map(k=>[k,(cfg.req&&cfg.req[k])||4])); (cfg.pass||[]).forEach(k=>state.req[k]='P'); state.goalTierBy=Object.assign({},cfg.goal||{}); state.tempLocks=temp; delete state.keep; delete state.rareOk; ['Head','Arm','Body','Leg'].forEach(p=>state.pieces[p]=blank()); state.active='Leg'; };
+    ? (cfg,temp)=>{ Object.keys(state.roles).forEach(k=>{ if(EFF_NAMES.includes(k)) state.roles[k]='Off'; else delete state.roles[k]; }); cfg.keys.forEach(k=>state.roles[k]='Target'); (cfg.pass||[]).forEach(k=>state.roles[k]='Passable'); state.goalTierBy=Object.assign({},cfg.goal||{}); state.N=cfg.N; state.tempLocks=temp; delete state.keep; delete state.rareOk; if(cfg.keep) state.keep={[state.active||'Head']:Object.assign({},cfg.keep)}; }
+    : (cfg,temp)=>{ state.req=Object.fromEntries(cfg.keys.map(k=>[k,(cfg.req&&cfg.req[k])||4])); (cfg.pass||[]).forEach(k=>state.req[k]='P'); state.goalTierBy=Object.assign({},cfg.goal||{}); state.tempLocks=temp; delete state.keep; delete state.rareOk; ['Head','Arm','Body','Leg'].forEach(p=>state.pieces[p]=blank()); state.active='Leg'; if(cfg.keep) state.keep={Leg:Object.assign({},cfg.keep)}; };
   const strip=s=>(s||'').replace(/<[^>]+>/g,'');
   const wait=()=>new Promise(r=>{ const t=()=>{ if(Exact.status(P)!=='pending'&&!Exact.busy()) r(); else setTimeout(t,30); }; t(); });
   const fmt=ls=>ls.map(l=>l.effect?(l.effect.split(' ').map(w=>w.slice(0,3)).join('')+l.tier+(l.locked?'🔒':'')):'–').join(' | ');
@@ -45,6 +46,7 @@
         if(Exact.status(P)==='pending') await wait();
         const q=Exact.qvalues(P,cur); if(!q) continue;
         let rec=recommend(P); if(rec.exact==='pending'){ await wait(); rec=recommend(P); }   // the plan may ask for another table
+        if(rec.kept){ S.judged++; continue; }   // the lock of a line the player chose to keep: the player's choice, not a solver move (its table already holds the line)
         const t=strip(rec.title); let act; let mm;
         if((mm=t.match(/^🔑 Temp-lock Line (\d)/))) act=+mm[1];   // temp mode: holding the line is the move
         else act=actionOf(rec);

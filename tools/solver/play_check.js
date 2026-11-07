@@ -35,7 +35,17 @@
     {name:'Ele4 ATK4 Ammo2 · no temp locks', req:{[EL]:4,'ATK':4,[AM]:2}, temp:false},
     {name:'Ele3 ATK3 Ammo3', req:{[EL]:3,'ATK':3,[AM]:3}, temp:true},
     {name:'Ele4 ATK4 Ammo4', req:{[EL]:4,'ATK':4,[AM]:4}, temp:true},
-    {name:'Ele4 ATK4 CritAny2', req:{[EL]:4,'ATK':4,[groupKey([CR,CD])]:2}, temp:true} ];
+    {name:'Ele4 ATK4 CritAny2', req:{[EL]:4,'ATK':4,[groupKey([CR,CD])]:2}, temp:true},
+    // added 7 Nov 2026: value targets, passables, bigger groups, kept rare rolls, temp locks off elsewhere
+    {name:'Ele4 ATK4 Ammo2 · Blue', req:{[EL]:4,'ATK':4,[AM]:2}, goal:{[EL]:12,'ATK':12,[AM]:12}, temp:true},
+    {name:'Ele4 ATK4 Ammo2 · Black Ele', req:{[EL]:4,'ATK':4,[AM]:2}, goal:{[EL]:15}, temp:true},
+    {name:'Ele4 ATK4 + passable Ammo', req:{[EL]:4,'ATK':4}, pass:[AM], temp:true},
+    {name:'Ele4 CritAny4', req:{[EL]:4,[groupKey([CR,CD])]:4}, temp:true},
+    {name:'Ele4 ATK4 any3(CritR/CritD/ChgSpd)2', req:{[EL]:4,'ATK':4,[groupKey([CR,CD,'Charge Speed'])]:2}, temp:true},
+    {name:'Ele4 ATK4 CritAny2 · mixed goals', req:{[EL]:4,'ATK':4,[groupKey([CR,CD])]:2}, goal:{[CR]:8,[CD]:12}, temp:true},
+    {name:'Ele4 ATK4 Ammo2 · keep every rare roll', req:{[EL]:4,'ATK':4,[AM]:2}, temp:true, keepRare:true},
+    {name:'Ele3 ATK3 Ammo3 · no temp locks', req:{[EL]:3,'ATK':3,[AM]:3}, temp:false},
+    {name:'Ele4 ATK4 CritAny2 · no temp locks', req:{[EL]:4,'ATK':4,[groupKey([CR,CD])]:2}, temp:false} ];
   const blank=()=>[0,1,2].map(()=>({effect:'',tier:11,locked:false}));
   const ab=x=>x.split(' ').map(w=>w.slice(0,3)).join('');
   const fmtP=p=>state.pieces[p].map(l=>l.effect?(ab(l.effect)+l.tier+(l.locked?'🔒':'')):'–').join(' | ');
@@ -77,9 +87,9 @@
     const h3=step&&step.querySelector('h3'); let title=h3?h3.textContent:''; const pt=h3&&h3.querySelector('.ptag'); if(pt) title=title.replace(pt.textContent,'').trim();
     const rows=[]; const rs=step?[...step.querySelectorAll('.lrows > span')]:[];
     for(let k=0;k+1<rs.length;k+=2){ const v=rs[k+1], lab=rs[k].textContent; let m;
-      if((m=lab.match(/^Lines (\d)\+(\d)$/))) rows.push({pair:[+m[1]-1,+m[2]-1], line:-1, mute:false, text:v.textContent, effects:[]});
-      else{ const effects=[], floors={}; if(!v.classList.contains('mute')){ let last=null; [...v.childNodes].forEach(n=>{ if(n.nodeType===3){ last=n.textContent.trim(); if(last) effects.push(last); } else if(last&&n.classList&&n.classList.contains('mute')){ const fm=n.textContent.match(/T(\d+)\+/); if(fm) floors[last]=+fm[1]; } }); }
-        rows.push({line:+lab.replace('Line ','')-1, mute:v.classList.contains('mute'), text:v.textContent, effects, floors}); } }
+      if((m=lab.match(/^Line (\d) \+ Line (\d)$/))) rows.push({pair:[+m[1]-1,+m[2]-1], line:-1, mute:false, text:v.textContent.replace(/\s+/g,' ').trim(), effects:[]});
+      else{ const effects=[], floors={}; const lk=v.classList.contains('lk'); if(!v.classList.contains('mute')&&!lk){ let last=null; [...v.childNodes].forEach(n=>{ if(n.nodeType===3){ last=n.textContent.trim(); if(last) effects.push(last); } else if(last&&n.classList&&n.classList.contains('mute')){ const fm=n.textContent.match(/T(\d+)\+/); if(fm) floors[last]=+fm[1]; } }); }
+        const tx=v.textContent.replace(/\s+/g,' ').trim(); rows.push({line:+lab.replace('Line ','')-1, mute:v.classList.contains('mute')||lk, text:lk?(/temp lock/.test(tx)?'temp-lock · '+tx.replace(/^🔑 ?/,'').replace(/ · temp lock this roll$/,''):'locked · '+tx.replace(/^🔒 ?/,'').replace(/ · locked$/,'')):tx, effects, floors}); } }
     return {gate:!!gate, target:gate?gate.querySelector('button').textContent.replace('Switch to ','').trim():null, safe:gate?gate.querySelector('.top .muted').textContent:'', title, rows, body:step?step.innerText:'', pending:!!adv.querySelector('.step.pending'), problem:!!adv.querySelector('.riskline')}; }
 
   // enter a roll in the real roll-guide popup and read its verdict
@@ -146,18 +156,19 @@
         const counted=i=>c.rows.find(r=>r.line===i&&r.effects.length);
         let landed=[0,1,2].filter(i=>!lines[i].locked&&!held.includes(i)&&newL[i].effect&&counted(i)&&counted(i).effects.some(n=>n.split(' / ').includes(newL[i].effect)&&newL[i].tier>=((counted(i).floors||{})[n]||1)));
         // a pair row: both effects landed on those two lines (either way round when the row says "A with B")
-        c.rows.filter(r=>r.pair).forEach(r=>{ const [i,j]=r.pair; const ei=newL[i].effect, ej=newL[j].effect; if(!ei||!ej) return; const names=r.text.split(/ with | on Line \d/).filter(x=>x&&!/^\d$/.test(x)).map(x=>x.trim());
+        c.rows.filter(r=>r.pair).forEach(r=>{ const [i,j]=r.pair; const ei=newL[i].effect, ej=newL[j].effect; if(!ei||!ej) return; const fm=r.text.match(/\(T(\d+)\+ each\)/); const ft=fm?+fm[1]:1; if(newL[i].tier<ft||newL[j].tier<ft) return; const names=r.text.replace(/ \(T\d+\+ each\)/,'').split(/ AND | with | on Line \d/).filter(x=>x&&!/^\d$/.test(x)).map(x=>x.trim());
           const hit=/ on Line /.test(r.text)?(names[0].split(' / ').includes(ei)&&names[1].split(' / ').includes(ej)):((names[0].split(' / ').includes(ei)&&names[1].split(' / ').includes(ej))||(names[1].split(' / ').includes(ei)&&names[0].split(' / ').includes(ej)));
           if(hit) landed=landed.concat([i,j]); });
         const othersDead=[0,1,2].filter(i=>!lines[i].locked&&!held.includes(i)).every(i=>{ const r=c.rows.find(x=>x.line===i); return r&&(r.effects.length||r.text==='does not count yet'||r.text==='does not count alone'); });
         const rowsSayDead=!landed.length&&othersDead;
         if(landed.length&&othersDead) rule(R.take, g.v==='Press CHANGE', {setup:cfg.name,card:c.title,rows:c.rows.map(r=>`L${r.line+1}: ${r.mute?r.text:r.effects.join(' or ')}`).join(' · '),roll:newL.map(l=>l.effect?ab(l.effect)+l.tier:'–').join(' | '),verdict:g.v+' '+g.why,unit:fmtU()});
-        const sm=g.why.match(/about (\d+) modules? saved/); const saved=sm?+sm[1]:0;
-        if(!landed.length&&othersDead) rule(R.dead, !(g.v==='Press CHANGE'&&saved>=1), {setup:cfg.name,card:c.title,rows:c.rows.map(r=>`L${r.line+1}: ${r.mute?r.text:r.effects.join(' or ')}`).join(' · '),roll:newL.map(l=>l.effect?ab(l.effect)+l.tier:'–').join(' | '),verdict:g.v+' '+g.why,unit:fmtU()});
+        const sm=g.why.match(/about (\d+) modules? saved/); const saved=sm?+sm[1]:0; const LMIN=(typeof landMin==='function')?landMin(buildPlan().exact?buildPlan().cost:0):1;
+        if(!landed.length&&othersDead) rule(R.dead, !(g.v==='Press CHANGE'&&saved>=LMIN), {setup:cfg.name,card:c.title,rows:c.rows.map(r=>`L${r.line+1}: ${r.mute?r.text:r.effects.join(' or ')}`).join(' · '),roll:newL.map(l=>l.effect?ab(l.effect)+l.tier:'–').join(' | '),verdict:g.v+' '+g.why,unit:fmtU()});
         if(take){ state.pieces[p]=newL; if(typeof EV_CACHE!=='undefined') EV_CACHE.clear(); await ready();
           // rule 1: the promised hold
           const pr=promiseOf(c.body); if(pr&&pr.kind==='lock'&&landed.length){ const st=stepOf(p); rule(R.hold, promiseMet(pr,st,landed), {setup:cfg.name,card:c.title,promise:c.body.match(/then (?:hold|lock) [^.]*\./)?.[0],roll:newL.map(l=>l.effect?ab(l.effect)+l.tier:'–').join(' | '),nextStep:st.title,unit:fmtU()}); } }
       } else if(take){ state.pieces[p]=newL; if(typeof EV_CACHE!=='undefined') EV_CACHE.clear(); await ready(); }
+      if(take&&cfg.keepRare){ const a=analyze(p); let kept=false; state.pieces[p].forEach(l=>{ const fl=(typeof rareAbove==='function')?rareAbove(l):0; if(fl&&l.effect&&a.desired.includes(keyOf(l.effect))&&!(state.keep&&state.keep[p]&&state.keep[p][l.effect])){ const m=state.keep||(state.keep={}); (m[p]||(m[p]={}))[l.effect]=fl; kept=true; } }); if(kept){ if(typeof EV_CACHE!=='undefined') EV_CACHE.clear(); await ready(); log(`${p}: keeps a rare line (${JSON.stringify(state.keep[p])})`); } }
       log(`${p}: ${c.title}${c.rows.length?' ['+c.rows.map(r=>`L${r.line+1}: ${r.mute?r.text:r.effects.join(' or ')}`).join(' · ')+']':''} · roll ${newL.map(l=>l.effect?ab(l.effect)+l.tier:'–').join(' | ')} → ${g.v}${g.why?' ('+g.why.replace(/\s+/g,' ').trim().slice(0,90)+')':''} · spent ${G.cost}`);
       return true; }
     if(st0.done){ log(`${p}: finished but shown as the move: ${c.title}`); G.stuck=true; return false; }
@@ -173,7 +184,7 @@
     for(;S.ci<configs.length;S.ci++,S.gi=0){
       const cfg=configs[S.ci]; if(S.only&&!cfg.name.includes(S.only)) continue;
       for(;S.gi<gamesPerConfig;S.gi++,S.game=null){
-        if(!S.game){ state.req=Object.assign({},cfg.req); state.goalTierBy=Object.assign({},cfg.goal||{}); state.tempLocks=!!cfg.temp; delete state.keep; delete state.rareOk; PIECES.forEach(p=>state.pieces[p]=blank()); state.active='Head'; if(typeof EV_CACHE!=='undefined') EV_CACHE.clear();
+        if(!S.game){ state.req=Object.assign({},cfg.req); (cfg.pass||[]).forEach(e=>state.req[e]='P'); state.goalTierBy=Object.assign({},cfg.goal||{}); state.tempLocks=!!cfg.temp; delete state.keep; delete state.rareOk; PIECES.forEach(p=>state.pieces[p]=blank()); state.active='Head'; if(typeof EV_CACHE!=='undefined') EV_CACHE.clear();
           S.game={cost:0,steps:0,log:[],fin:new Set(),lastLock:null,prevLock:null,stuck:false}; await draw(); const tg=totalRemainingEV(); S.game.predicted=tg?tg.ev:null; if(S.gi===0) S.game.log.push(`setup ${cfg.name} · page predicts ~${S.game.predicted} modules`); }
         while(S.game.steps<2500){
           if(Date.now()-t0>budgetMs) return {partial:true,setup:S.ci+1,of:configs.length,game:S.gi+1,steps:S.steps};

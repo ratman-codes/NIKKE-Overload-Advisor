@@ -95,7 +95,8 @@
   .step.pending h3{color:var(--muted);font-weight:500}
   .step h3{margin:0 0 6px;font-size:17px}
   /* Change Effects card: one row per line, in the game's order, saying what counts there */
-  .lrows{display:grid;grid-template-columns:52px minmax(0,1fr);row-gap:2px;margin:2px 0 10px;font-size:13.5px}
+  .lrows{display:grid;grid-template-columns:104px minmax(0,1fr);row-gap:2px;margin:2px 0 10px;font-size:13.5px}
+  .lrows .lk{color:#5fd67a} .lrows .lk.tk{color:#f5c542} .lrows .lk .ic{margin-right:6px;font-size:12px} .lrows .pk{color:var(--accent)} .lrows .pv{border-left:2px solid var(--accent);padding-left:8px;border-radius:2px} .lrows .and{color:var(--accent);font-size:12px;font-weight:600;margin:0 5px}
   .lrows .k,.lrows .mute{color:var(--muted)}
   .lrows .or{color:var(--muted);font-size:12px;margin:0 5px}
   .step .why{color:var(--muted);font-size:13.5px;margin-top:8px}
@@ -1168,33 +1169,49 @@ const plainT=s=>(s||'').replace(/<[^>]+>/g,'');
 function recommend(piece){
   const rec=recommendCore(piece);
   if(!state.tempLocks) return rec;
+  // the hold chain starts from the card's lock; when that chain leads nowhere and the solver's own best move is a
+  // different lock, the chain is retried from there (play_check.js, 7 Nov 2026: the rules' within-a-tie lock of Line 2
+  // led nowhere while the solver's hold of Line 1 led to a 1.9-module cheaper roll)
+  if(rec.exact==='pending') return rec;
+  const pend=r=>r&&r.pending?Object.assign({},rec,{exact:'pending'}):r;
+  const r1=holdChain(piece,rec); if(r1) return pend(r1);
+  const alt=recommendCore(piece,true); const t0=plainT(rec.title), t1=plainT(alt.title);
+  const note=r=>Object.assign({},r,{body:(r.body||'')+'<span class="muted"> Module lock, not a temp lock: this line is finished and stays locked for every remaining roll, so temp locks would cost more than the modules.</span>'});
+  const meetsOf=t=>{ const m=t.match(/Line (\d)/); return !!m&&classifyLine(state.pieces[piece][+m[1]-1]).meets; };
+  if(!/^🔒 Lock Line/.test(t0)) return rec;
+  if(meetsOf(t0)) return note(rec);   // a finished line: a module lock, as the card says
+  // the rules' hold leads nowhere: the solver's own lock, as a temp chain or (finished line) a module lock
+  if(/^🔒 Lock Line/.test(t1)&&t1.slice(0,16)!==t0.slice(0,16)){ const r2=holdChain(piece,alt); if(r2) return pend(r2); if(meetsOf(t1)) return note(alt); }
+  return recommendCore(piece,true,true);   // no usable hold: the best move without a lock
+}
+// Compose "Temp-lock Line n + <next step>" from a lock card, or null when the hold does not end in a roll.
+function holdChain(piece,rec){
   const held=[], saved=[]; let cur=rec;
   while(cur && held.length<2){
     const m=(cur.title||'').replace(/<[^>]+>/g,'').match(/^🔒 Lock Line (\d)/); if(!m) break;
     const i=+m[1]-1, l=state.pieces[piece][i]; if(!l||l.locked||held.includes(i)) break;
     if(classifyLine(l).meets) break;   // finished line: final hold, module lock is the better buy
     saved.push(l); l.locked=true; held.push(i);
-    cur=recommendCore(piece);
+    // with the hold in place, follow the solver's own best move: the rules' within-a-tie move can be a second lock
+    // or an unlock that leads nowhere (play_check.js, 7 Nov 2026: a free temp lock came out as a 2-module lock)
+    cur=recommendCore(piece,true);
+    if(cur.exact==='pending'){ saved.forEach(x=>x.locked=false); return {pending:true}; }   // a table for the held state is still computing
     // With the hold in place the rules' within-a-tie move can be "unlock that line" (Line 1 always rolls ...), which
     // would compose "Temp-lock Line 1 + Unlock Line 1" (play_check.js, 6 Nov 2026). The hold is the solver's own
     // choice (a provisional lock is nearly free in temp mode), so the step after it is the solver's best move with
     // the hold in place; only when even that undoes the hold is there no hold at all.
     const undoes=r=>/^(🔓 Unlock Line|⚠️ Line) (\d)/.test(plainT(r.title))&&held.includes(+plainT(r.title).match(/Line (\d)/)[1]-1);
-    if(undoes(cur)){ const alt=recommendCore(piece,true); if(!undoes(alt)) cur=alt; else { saved.forEach(x=>x.locked=false); const best=recommendCore(piece,true); return /^🔒 Lock Line/.test(plainT(best.title))?rec:best; } }
+    if(undoes(cur)){ saved.forEach(x=>x.locked=false); return null; }   // the hold leads nowhere
   }
   // a hold is only worth composing when the step after it is a roll; a chain that ends in an unlock or anything
   // else is a tie artifact (provisional locks cost ~0), and the card is the best move without a lock instead
-  if(held.length&&cur&&!/🔁|🎯/.test(plainT(cur.title))){ saved.forEach(l=>l.locked=false); const nb=recommendCore(piece,true,true); return nb; }
+  if(held.length&&cur&&!/🔁|🎯/.test(plainT(cur.title))){ saved.forEach(l=>l.locked=false); return null; }
   saved.forEach(l=>l.locked=false);
-  if(!held.length){
-    if(/^🔒 Lock Line/.test((rec.title||'').replace(/<[^>]+>/g,'')))
-      return Object.assign({},rec,{body:(rec.body||'')+'<span class="muted"> Module lock, not a temp lock: this line is finished and stays locked for every remaining roll, so temp locks would cost more than the modules.</span>'});
-    return rec;
-  }
+  if(!held.length) return null;
   const nPerm=state.pieces[piece].filter(l=>l.locked).length;
   let keys=0; held.forEach((_,j)=>keys+=10*(nPerm+j+1)+10);
   const names=held.map(i=>'Line '+(i+1)).join(' + ');
-  const rows=cur.rows?cur.rows.map(r=>held.includes(r.i)?{i:r.i,mute:true,text:`temp-lock · ${state.pieces[piece][r.i].effect}`}:r):undefined;
+  const rows=cur.rows?cur.rows.map(r=>held.includes(r.i)?{i:r.i,mute:true,kind:'temp',text:`temp-lock · ${state.pieces[piece][r.i].effect}`}:r):undefined;
   // a "then unlock" of a temp-held line: the temp lock ends by itself after the roll
   const innerBody=(cur.body||'').replace(/ ?Then unlock ([A-Za-z /]+?) on Line (\d)(?: too)? \(free\)\./g,(m,e,n)=>held.includes(+n-1)?` The temp lock on Line ${n} then ends by itself; leave it unlocked.`:m);
   return Object.assign({},cur,{
@@ -2003,6 +2020,13 @@ const Exact=(function(){
    exactly. While a table is still being computed (first ~150 ms per target set) the rules
    answer, marked "checking exactly". */
 const EXACT_TIE=0.25;   // modules: moves this close are the same move
+// A landing is named on the Change Effects card only when it saves at least this much. The plan's tie-break can
+// wobble by up to EXACT_TIE, so a 0.3-module "saving" is noise (play_check.js, 7 Nov 2026: an Ammo named on a row
+// saved 0.29 at Tier 1 and 0.00 at Tier 10). The roll guide labels anything under a module as "under 1 module".
+const LAND_MIN=1;
+// ... and at least half a percent of what is left: in a 500-module Black build a 1.3-module "saving" is the model's
+// temp-lock pricing (a below-target line is held for free, an at-target one costs a module lock), not advice.
+function landMin(vCur){ return Math.max(LAND_MIN,(vCur||0)*0.005); }
 const ACT_NAMES=['stop','lock1','lock2','lock3','unlock1','unlock2','unlock3','change','reset'];
 function actionOf(rec){ const t=(rec&&rec.title||'').replace(/<[^>]+>/g,''); let m;
   if((m=t.match(/^🔒 Lock Line (\d)/))) return +m[1];
@@ -2041,9 +2065,18 @@ function nextSentenceAt(piece,ls){ return withLines(piece,ls,()=>nextSentence(pi
 // (the same rule recommendCoreRaw applies), so a "then ..." names the card that really comes next.
 function nextAct(piece,ls){ return withLines(piece,ls,()=>{ const q=Exact.qvalues(piece,ls); if(!q) return -1; let n=q.best; try{ const ra=actionOf(recommendRules(piece)); if(ra>=0&&isFinite(q.Q[ra])&&q.Q[ra]<=q.Q[q.best]+EXACT_TIE) n=ra; }catch(e){} return n; }); }
 // What the solver does next from `ls` (the piece after this card's move), as a sentence.
+// The move the next CARD shows for `ls`: the real card (temp-lock wrapper included), parsed; a temp-held line counts as
+// a lock of that line. Two levels deep at most, then the table move stands in.
+let __nmDepth=0;
+function nextMove(piece,ls){ if(__nmDepth>1) return {act:nextAct(piece,ls),held:[]}; __nmDepth++;
+  try{ const was=state.pieces[piece]; state.pieces[piece]=ls; try{ const r=recommend(piece); const t=plainT(r.title); const held=[]; let inner=t;
+      const m=t.match(/^🔑 Temp-lock Line (\d)(?: \+ Line (\d))?/); if(m){ held.push(+m[1]-1); if(m[2]) held.push(+m[2]-1); const k=Math.min(...['🔁','🎯','🔒','🔓','⚠'].map(x=>{ const i=t.indexOf(x,2); return i<0?1e9:i; })); inner=k<1e9?t.slice(k):t; }
+      if(r.exact==='pending') return {act:-1,held:[],pending:true};
+      if(r.risk==='done') return {act:0,held}; const a=actionOf({title:inner}); return {act:held.length?1+held[0]:a,held,inner:a}; } finally{ state.pieces[piece]=was; } }
+  finally{ __nmDepth--; } }
 function nextSentence(piece,a,ls){
   const q=Exact.qvalues(piece,ls); if(!q) return ' Then update the piece here for the next step.';
-  const n=nextAct(piece,ls), nm=i=>`${ls[i].effect} on Line ${i+1}`;
+  const n=nextMove(piece,ls).act, nm=i=>`${ls[i].effect} on Line ${i+1}`;
   if(n===0) return ' That finishes the piece.';
   if(n>=1&&n<=3) return state.tempLocks?` Then hold ${nm(n-1)} as well. This piece's next step says whether with a lock or a temp lock.`:` Then lock ${nm(n-1)} as well.`;
   if(n>=4&&n<=6) return ` Then unlock ${nm(n-4)} too (free).`;
@@ -2065,24 +2098,32 @@ function withChangeGoal(piece,rec,tail){
   // every effect the unit still wants, not only the ones planned for this piece: a landing counts when the
   // unit is cheaper to finish with it here, and the plan then moves the effect to this piece if need be
   const keys=a.desired.slice(); if(typeof planCostWith==='function') reqEffects().forEach(k=>{ if(!keys.includes(k)) keys.push(k); });   // every target: the plan may move one here even when another piece holds it unlocked
+  let pendingAny=false;   // a landing priced on a table still computing: the card would change when it arrives
+  const LM=landMin(vCur);
   const onLine={}, minTier={}; const nexts=new Set(), sents=new Set(), moved=new Set(); let full=true, holdLanded=true;   // holdLanded: every counted landing is followed by a lock of that same line
   [0,1,2].filter(i=>!cur[i].locked).forEach(i=>{ keys.forEach(k=>{
     // the lowest tier from which this landing counts (a landing at a higher value is never worth less)
     let bl=null, bt=null;
     groupMembers(k).forEach(e=>{ if(cur.some(l=>l.locked&&l.effect===e)) return;
-      const at=t=>{ const ls=blank(); ls[i]={effect:e,tier:t,locked:false}; const v=unitValue(piece,ls); return v!==null&&v<vCur-EXACT_TIE?ls:null; };
+      const at=t=>{ const ls=blank(); ls[i]={effect:e,tier:t,locked:false}; const v=unitValue(piece,ls); if(v===null&&Exact.busy()) pendingAny=true; return v!==null&&v<vCur-LM?ls:null; };
       let t=null, ls=null; if((ls=at(1))) t=1; else if(at(15)){ let lo=2, hi=15; while(lo<hi){ const m=(lo+hi)>>1; if(at(m)) hi=m; else lo=m+1; } t=lo; ls=at(t); }
       if(t!==null&&(bt===null||t<bt)){ bt=t; bl=ls; } });
-    if(bt!==null){ (onLine[i]=onLine[i]||[]).push(k); (minTier[i]=minTier[i]||{})[k]=bt; if(!a.desired.includes(k)) moved.add(k); const nb=nextAct(piece,bl); nexts.add(nb); sents.add(nextSentenceAt(piece,bl)); if(nb!==1+i) holdLanded=false;
+    if(bt!==null){ (onLine[i]=onLine[i]||[]).push(k); (minTier[i]=minTier[i]||{})[k]=bt; if(!a.desired.includes(k)) moved.add(k); const nmv=nextMove(piece,bl); if(nmv.pending) pendingAny=true; const nb=nmv.act; nexts.add(nb); sents.add(nextSentenceAt(piece,bl)); if(nb!==1+i) holdLanded=false;
       if(!withLines(piece,bl,()=>{ const a2=analyze(piece); const have=new Set(bl.filter(l=>l.effect).map(l=>keyOf(l.effect))); return a2.desired.filter(d=>have.has(d)).length>=a2.N; })) full=false; }
   }); });
   // Two landings in one roll can count together while neither counts alone (Elemental on Line 1 with ATK on
   // Line 2 completes a two-line piece: 20 modules, found by play_check.js). Such pairs get their own row.
-  const pairs=[]; { const free=[0,1,2].filter(i=>!cur[i].locked); const alone=(i,k)=>!!(onLine[i]&&onLine[i].includes(k));
+  const pairs=[]; { const free=[0,1,2].filter(i=>!cur[i].locked); const aloneFloor=(i,k)=>(onLine[i]&&onLine[i].includes(k))?minTier[i][k]:16;
     for(const i of free) for(const j of free){ if(j<=i) continue;
-      keys.forEach(k1=>keys.forEach(k2=>{ if(k1===k2||alone(i,k1)||alone(j,k2)) return; let bv=null;
-        groupMembers(k1).forEach(e1=>groupMembers(k2).forEach(e2=>{ if(e1===e2||cur.some(l=>l.locked&&(l.effect===e1||l.effect===e2))) return; const ls=blank(); ls[i]={effect:e1,tier:1,locked:false}; ls[j]={effect:e2,tier:1,locked:false}; const v=unitValue(piece,ls); if(v!==null&&(bv===null||v<bv)) bv=v; }));
-        if(bv!==null&&bv<vCur-EXACT_TIE){ const key=[k1,k2].sort().join('|'); let pr=pairs.find(x=>x.i===i&&x.j===j&&x.key===key); if(!pr){ pr={i,j,key,ks:[k1,k2].sort(),orient:[]}; pairs.push(pr); } pr.orient.push([k1,k2]); nexts.add(-1); holdLanded=false; } })); } }
+      keys.forEach(k1=>keys.forEach(k2=>{ if(k1===k2) return; let bv=null;
+        // priced at the lowest values first; a pair that only counts from a value gets a floor (both effects at tier t)
+        let bt=null;
+        groupMembers(k1).forEach(e1=>groupMembers(k2).forEach(e2=>{ if(e1===e2||cur.some(l=>l.locked&&(l.effect===e1||l.effect===e2))) return;
+          const at=t=>{ const ls=blank(); ls[i]={effect:e1,tier:t,locked:false}; ls[j]={effect:e2,tier:t,locked:false}; const v=unitValue(piece,ls); if(v===null&&Exact.busy()) pendingAny=true; return v!==null&&v<vCur-LM; };
+          let t=null; if(at(1)) t=1; else if(at(15)){ let lo=2, hi=15; while(lo<hi){ const m=(lo+hi)>>1; if(at(m)) hi=m; else lo=m+1; } t=lo; }
+          if(t!==null&&(bt===null||t<bt)) bt=t; }));
+        if(bt!==null&&bt<Math.min(aloneFloor(i,k1),aloneFloor(j,k2))){ const key=[k1,k2].sort().join('|'); let pr=pairs.find(x=>x.i===i&&x.j===j&&x.key===key); if(!pr){ pr={i,j,key,ks:[k1,k2].sort(),orient:[],floor:bt}; pairs.push(pr); } pr.orient.push([k1,k2]); pr.floor=Math.min(pr.floor,bt); nexts.add(-1); holdLanded=false; } })); } }
+  if(pendingAny) return Object.assign({},rec,{exact:'pending'});
   const idx=Object.keys(onLine).map(Number).sort(); if(!idx.length&&!pairs.length) return rec;
   // Title: the lines that count; the effects too when there are at most two and the same on every counted line.
   // The rows under the title carry the full list, line by line, in the game's order.
@@ -2090,7 +2131,8 @@ function withChangeGoal(piece,rec,tail){
   const keysAll=[...new Set(idx.flatMap(i=>onLine[i]))];
   const anyFloor=idx.some(i=>onLine[i].some(k=>minTier[i][k]>1));
   const what=(same&&keysAll.length<=2&&!anyFloor)?_orList(keysAll.map(_nk)):'a target';
-  const title=idx.length?`🔁 Change Effects until ${what} lands on Line ${_orList(idx.map(i=>i+1))}`:`🔁 Change Effects until ${_orList([...new Set(pairs.map(x=>x.ks.map(_nk).join(' with ')))])} land together on Lines ${_orList([...new Set(pairs.map(x=>`${x.i+1} and ${x.j+1}`))])}`;
+  const pairLines=[...new Set(pairs.map(x=>`${x.i+1}|${x.j+1}`))]; const pairTxt=pairLines.length===1?`Line ${pairLines[0].split('|')[0]} + Line ${pairLines[0].split('|')[1]} land together`:'two lines land together';
+  const title=idx.length?`🔁 Change Effects until ${what} lands on Line ${_orList(idx.map(i=>i+1))}${pairs.length?', or '+pairTxt:''}`:`🔁 Change Effects until ${pairTxt}`;
   // one next move for every counted landing; "hold the line it landed on" also covers a Line 2 landing followed
   // by a lock of Line 2 and a Line 3 landing followed by a lock of Line 3
   const nx=nexts.size===1?[...nexts][0]:(holdLanded?1:-1);
@@ -2109,11 +2151,11 @@ function withChangeGoal(piece,rec,tail){
   const dead=[0,1].filter(i=>!cur[i].locked&&!onLine[i]).filter(deadOf);
   // one row per line: what counts there, or why nothing does
   const rows=[0,1,2].map(i=>{ const l=cur[i];
-    if(l.locked) return {i,mute:true,text:`locked · ${l.effect}`};
+    if(l.locked) return {i,mute:true,kind:'locked',text:`locked · ${l.effect}`};
     if(onLine[i]) return {i,effects:onLine[i].map(_nk),tiers:Object.fromEntries(onLine[i].map(k=>[_nk(k),minTier[i][k]]))};
     if(l.effect&&_wanted(a,l)&&!deadOf(i)) return {i,mute:true,text:`${l.effect} · worth keeping: press Keep if a roll loses it`};
     return {i,mute:true,text:pairs.some(x=>x.i===i||x.j===i)?'does not count alone':'does not count yet'}; });
-  pairs.forEach(x=>{ const both=x.orient.length===2; rows.push({i:x.i,j:x.j,pair:x.orient,mute:false,effects:[],text:both?`${_nk(x.ks[0])} with ${_nk(x.ks[1])}`:`${_nk(x.orient[0][0])} on Line ${x.i+1} with ${_nk(x.orient[0][1])} on Line ${x.j+1}`}); });
+  pairs.slice().sort((p,q)=>q.j-p.j||q.i-p.i).forEach(x=>{ const both=x.orient.length===2; const at=rows.findIndex(r=>!r.pair&&r.i===x.j)+1; rows.splice(at,0,{i:x.i,j:x.j,pair:x.orient,floor:x.floor,mute:false,effects:[],text:(both?`${_nk(x.ks[0])} with ${_nk(x.ks[1])}`:`${_nk(x.orient[0][0])} on Line ${x.i+1} with ${_nk(x.orient[0][1])} on Line ${x.j+1}`)+(x.floor>1?` (T${x.floor}+ each)`:'')}); });
   let note='';
   if(dead.length===2) note=' Lines 1 and 2 do not count yet: they roll an effect more often than Line 3 (every time and half the time, against 30%), so they are filled after it.';
   else if(dead[0]===0) note=' Line 1 does not count yet: it rolls an effect every time, so it is the easiest line to fill and comes last.';
@@ -2216,6 +2258,7 @@ function withUnlockCard(piece,rec,tail){
   return Object.assign({},rec,{body:`Unlock <b>${_orList(is.map(i=>`${cur[i].effect} on Line ${i+1}`),'and')}</b> (free). ${why}${nx}<span class="muted">${half} Modules already spent on the lock are not refunded.</span>${tail||''}`});
 }
 function exactWording(piece,rec,act,tail){
+  if(act>=1&&act<=6){ const s2=_copy(state.pieces[piece]); if(act<=3) s2[act-1].locked=true; else s2[act-4].locked=false; if(nextMove(piece,s2).pending) return Object.assign({},rec,{exact:'pending'}); }
   if(unitValue(piece,state.pieces[piece])===null&&Exact.busy()) return Object.assign({},rec,{exact:'pending'});
   if(act===7) return withChangeGoal(piece,rec,tail);
   if(act===8) return withResetCard(piece,rec,tail);
@@ -2323,7 +2366,9 @@ function pieceProblem(piece){ const ls=state.pieces[piece]; const seen={};
 // out once per such state and reused.
 const __recMemo=new Map();
 function recommendCore(piece,forceBest,noLock){
-  const key=piece+'|'+(forceBest?'B|':'')+(noLock?'N|':'')+Exact.stamp()+'|'+JSON.stringify(state);
+  // the depth of the "what comes next" lookup is part of the key: deep lookups use a stand-in for their own next step
+  // and must never be served as a top-level card (order-dependent cards, found by claim_check 7 Nov 2026)
+  const key=piece+'|'+(forceBest?'B|':'')+(noLock?'N|':'')+(typeof __nmDepth==='number'?__nmDepth:0)+'|'+Exact.stamp()+'|'+JSON.stringify(state);
   if(__recMemo.has(key)) return __recMemo.get(key);
   const r=recommendCoreRaw(piece,forceBest,noLock); if(__recMemo.size>600) __recMemo.clear(); __recMemo.set(key,r); return r;
 }
@@ -2343,8 +2388,16 @@ function recommendCoreRaw(piece,forceBest,noLock){
   const qs=Exact.qvalues(piece,state.pieces[piece]); if(!qs) return rules;
   // noLock: the best move that is not a lock (the temp-lock wrapper asks for it when a hold leads nowhere)
   let best=qs.best; if(noLock){ best=-1; [0,4,5,6,7,8].forEach(x=>{ if(isFinite(qs.Q[x])&&(best<0||qs.Q[x]<qs.Q[best])) best=x; }); if(best<0) best=qs.best; }
-  const bestQ=qs.Q[best]; const ra=actionOf(rules);
-  if(!forceBest && ra>=0 && isFinite(qs.Q[ra]) && qs.Q[ra]<=bestQ+EXACT_TIE){ const kept=Object.assign({},rules,{exact:'ok',exactQ:qs.Q[ra],exactBest:bestQ}); return exactWording(piece,kept,ra); }
+  let bestQ=qs.Q[best]; const ra=actionOf(rules);
+  // the rules' within-a-tie move is never an unlock that the next card would undo by holding the same line again
+  // (temp locks: unlocking is free and a provisional hold is free, so the solver is indifferent; play_check 7 Nov 2026)
+  let nmPending=false;
+  const reholdsAct=k=>k>=4&&k<=6&&(()=>{ try{ const s2=_copy(state.pieces[piece]); s2[k-4].locked=false; const nm=nextMove(piece,s2); if(nm.pending){ nmPending=true; return false; } return nm.act===k-3||nm.held.includes(k-4); }catch(e){ return false; } })();
+  // the solver's own pick can be such an unlock too (a free lock/unlock cycle is a fixed point of the tables): skip to the next-best action
+  { const Qx=qs.Q.slice(); let guard=0; while(best>=4&&best<=6&&reholdsAct(best)&&guard++<3){ Qx[best]=Infinity; let b=-1; for(let a=0;a<9;a++) if(isFinite(Qx[a])&&(b<0||Qx[a]<Qx[b])) b=a; if(b<0) break; best=b; } }
+  bestQ=qs.Q[best]; const bestQ2=bestQ; const reholds=reholdsAct(ra);
+  if(nmPending) return Object.assign({},rules,{exact:'pending'});
+  if(!forceBest && !reholds && ra>=0 && isFinite(qs.Q[ra]) && qs.Q[ra]<=bestQ2+EXACT_TIE){ const kept=Object.assign({},rules,{exact:'ok',exactQ:qs.Q[ra],exactBest:bestQ}); return exactWording(piece,kept,ra); }
   if(ra===0 && best===0) return rules;
   // build the solver's move from the rules' templates
   const a=analyze(piece); const lines=a.lines; const lockedCount=a.lockedCount;
@@ -2627,7 +2680,7 @@ function renderAdvice(){
     else if(got.length) securedLine=`<div class="secured">Secured on ${target}: ${got.join(' · ')}</div>`;
   }
   const tag=allMet?'':`<span class="ptag">${target}${a?` · ${securedCount(target)} / ${a.N} secured`:''}</span>`;
-  const rowsHtml=rec.rows?`<div class="lrows">${rec.rows.map(r=>r.pair?`<span class="k">Lines ${r.i+1}+${r.j+1}</span><span>${r.text}</span>`:`<span class="k">Line ${r.i+1}</span><span${r.mute?' class="mute"':''}>${r.mute?r.text:r.effects.map((e,k)=>`${k?'<span class="or">or</span>':''}${e}${(r.tiers&&r.tiers[e]>1)?` <span class="mute">(T${r.tiers[e]}+)</span>`:''}`).join('')}</span>`).join('')}</div>`:'';
+  const rowsHtml=rec.rows?`<div class="lrows">${rec.rows.map(r=>r.pair?`<span class="pk">Line ${r.i+1} + Line ${r.j+1}</span><span class="pv">${r.text.replace(' with ',' <span class="and">AND</span> ')}</span>`:`<span class="k">Line ${r.i+1}</span><span${r.kind?` class="lk${r.kind==='temp'?' tk':''}"`:(r.mute?' class="mute"':'')}>${r.kind==='locked'?`<span class="ic">🔒</span>${r.text.replace('locked · ','')} · locked`:r.kind==='temp'?`<span class="ic">🔑</span>${r.text.replace('temp-lock · ','')} · temp lock this roll`:r.mute?r.text:r.effects.map((e,k)=>`${k?'<span class="or">or</span>':''}${e}${(r.tiers&&r.tiers[e]>1)?` <span class="mute">(T${r.tiers[e]}+)</span>`:''}`).join('')}</span>`).join('')}</div>`:'';
   if(rec.rows&&riskLine){ whyItems.unshift(riskLine.replace('<div class="riskline">','<span class="warn">').replace(/<\/div>$/,'</span>')); riskLine=''; }
   const pillsHtml=(rec.cost||evPill)?`<div style="margin-top:8px">${rec.cost?`<span class="pill">${rec.cost}</span><span class="pill">${riskLabel(rec.risk)}</span>`:''}${rec.exact==='ok'?'<span class="pill" title="Checked against the exact solver">✓ exact</span>':(rec.exact==='pending'?'<span class="pill">checking exactly…</span>':'')}${evPill}</div>`:'';
   // last resort: no solver at all in this browser

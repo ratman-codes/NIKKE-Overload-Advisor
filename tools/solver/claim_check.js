@@ -38,11 +38,14 @@
       // spare lines: the plan may move a target between pieces, so a landing is judged by the unit
       {name:'spare 4/4/2', keys:[EL,'ATK',AM], effs:[EL,'ATK',AM], req:{[EL]:4,'ATK':4,[AM]:2}, N:3},
       {name:'spare 4/2/2', keys:[EL,'ATK',AM], effs:[EL,'ATK',AM], req:{[EL]:4,'ATK':2,[AM]:2}, N:3},
-      {name:'spare 4/3 blue', keys:[EL,'ATK'], effs:[EL,'ATK'], req:{[EL]:4,'ATK':3}, goal:{[EL]:12,'ATK':12}, N:2} ]);
+      {name:'spare 4/3 blue', keys:[EL,'ATK'], effs:[EL,'ATK'], req:{[EL]:4,'ATK':3}, goal:{[EL]:12,'ATK':12}, N:2},
+      {name:'kept blue Ele', keys:[EL,'ATK',AM], effs:[EL,'ATK',AM], keep:{[EL]:12}, N:3, tiers:[3,13]},
+      {name:'group mixed goals', keys:[EL,G1], effs:[EL,CR,CD], groupEffs:[CR,CD], goal:{[CR]:8,[CD]:12}, N:2, tiers:[3,9,13]},
+      {name:'group of three', keys:[EL,groupKey([CR,CD,CS])], effs:[EL,CR,CD,CS], groupEffs:[CR,CD,CS], N:2, tiers:[3,13]} ]);
   const blank=()=>[0,1,2].map(()=>({effect:'',tier:11,locked:false}));
   const setup=isSimple
-    ? (cfg,temp)=>{ Object.keys(state.roles).forEach(k=>{ if(EFF_NAMES.includes(k)) state.roles[k]='Off'; else delete state.roles[k]; }); cfg.keys.forEach(k=>state.roles[k]='Target'); (cfg.pass||[]).forEach(k=>state.roles[k]='Passable'); state.goalTierBy=Object.assign({},cfg.goal||{}); state.N=cfg.N; state.tempLocks=temp; }
-    : (cfg,temp)=>{ state.req=Object.fromEntries(cfg.keys.map(k=>[k,(cfg.req&&cfg.req[k])||4])); (cfg.pass||[]).forEach(k=>state.req[k]='P'); state.goalTierBy=Object.assign({},cfg.goal||{}); state.tempLocks=temp; ['Head','Arm','Body','Leg'].forEach(p=>state.pieces[p]=blank()); state.active='Leg'; };
+    ? (cfg,temp)=>{ Object.keys(state.roles).forEach(k=>{ if(EFF_NAMES.includes(k)) state.roles[k]='Off'; else delete state.roles[k]; }); cfg.keys.forEach(k=>state.roles[k]='Target'); (cfg.pass||[]).forEach(k=>state.roles[k]='Passable'); state.goalTierBy=Object.assign({},cfg.goal||{}); state.N=cfg.N; state.tempLocks=temp; if(cfg.keep) state.keep={[P]:Object.assign({},cfg.keep)}; }
+    : (cfg,temp)=>{ state.req=Object.fromEntries(cfg.keys.map(k=>[k,(cfg.req&&cfg.req[k])||4])); (cfg.pass||[]).forEach(k=>state.req[k]='P'); state.goalTierBy=Object.assign({},cfg.goal||{}); state.tempLocks=temp; ['Head','Arm','Body','Leg'].forEach(p=>state.pieces[p]=blank()); state.active='Leg'; if(cfg.keep){ state.keep={Leg:Object.assign({},cfg.keep)}; } };
 
   const strip=s=>(s||'').replace(/<[^>]+>/g,'');
   const L=(e,t,l)=>({effect:e,tier:t,locked:!!l});
@@ -67,7 +70,7 @@
     for(;S.ci<jobs.length;S.ci++){
       if(Date.now()-t0>budgetMs) return {partial:true,done:S.ci,of:jobs.length};
       const [cfg,temp]=jobs[S.ci];
-      setup(cfg,temp); delete state.keep; delete state.rareOk; state.pieces[P]=blank(); if(typeof EV_CACHE!=='undefined') EV_CACHE.clear(); Exact.ensure(P); await wait();
+      setup(cfg,temp); if(!cfg.keep) delete state.keep; delete state.rareOk; state.pieces[P]=blank(); if(typeof EV_CACHE!=='undefined') EV_CACHE.clear(); Exact.ensure(P); await wait();
       const opts=[null,{e:'DEF',t:5}]; cfg.effs.forEach(e=>{ [...new Set(cfg.tiers?cfg.tiers.concat([goalTier(e)]):[3,goalTier(e),13])].forEach(t=>opts.push({e,t})); });
       const tEffs=cfg.effs.filter(e=>!(cfg.pass||[]).includes(e));   // effects that are targets (a passable bonus is not)
       const tag=cfg.name+(temp?' temp':'');
@@ -94,12 +97,14 @@
         // naming: every "EFFECT on Line n" / "EFFECT (Line n)" in a lock, unlock or reset card matches the piece
         if(kind==='lock'||kind==='unlock'||kind==='reset'){ const re=new RegExp('('+NAMES+')(?: on Line | \\(Line )(\\d)','g'); let mm; while((mm=re.exec(body))) add('named effect really is on that line', eff[+mm[2]-1].effect===mm[1], where); }
         // the "next step" sentence, checked on the piece after this card's move
-        const nextClaim=async s2=>{ const q=await Qw(s2); if(!q) return; let mm; const nb=' → solver next '+ACT_NAMES[q.best];
-          if(/That finishes the piece\./.test(body)) add('next: finishes the piece', q.best===0, where+nb);
-          else if((mm=body.match(/Then (?:lock|hold) [A-Za-z ]+ on Line (\d)/))) add('next: lock or hold another line', near(q,+mm[1]), where+nb);
-          else if((mm=body.match(/Then unlock [A-Za-z ]+ on Line (\d)/))) add('next: unlock another line', near(q,3+ +mm[1]), where+nb);
-          else if(/Then press Change Effects/.test(body)) add('next: Change Effects', near(q,7), where+nb);
-          else if(/Then press Reset Attributes/.test(body)) add('next: Reset Attributes', near(q,8), where+nb);
+        // the "next step" is judged by the card that really comes next (temp-lock wrapper included), as the page writes it
+        const nextClaim=async s2=>{ const q=await Qw(s2); if(!q) return; let mm; let nm=(typeof nextMove==='function')?nextMove(P,s2):null; if(nm&&nm.act<0&&Exact.busy()){ await wait(); nm=nextMove(P,s2); }
+          const isA=k=>nm?(nm.act===k||(k>=1&&k<=3&&nm.held.includes(k-1))):near(q,k); const nb=' → next card '+(nm?ACT_NAMES[nm.act]+(nm.held.length?' (held '+nm.held.map(i=>i+1).join('+')+')':''):'?')+' · solver '+ACT_NAMES[q.best];
+          if(/That finishes the piece\./.test(body)) add('next: finishes the piece', isA(0), where+nb);
+          else if((mm=body.match(/Then (?:lock|hold) [A-Za-z ]+ on Line (\d)/))) add('next: lock or hold another line', isA(+mm[1]), where+nb);
+          else if((mm=body.match(/Then unlock [A-Za-z ]+ on Line (\d)/))) add('next: unlock another line', isA(3+ +mm[1]), where+nb);
+          else if(/Then press Change Effects/.test(body)) add('next: Change Effects', isA(7), where+nb);
+          else if(/Then press Reset Attributes/.test(body)) add('next: Reset Attributes', isA(8), where+nb);
           else if(/Then update the piece here/.test(body)) add('next: no claim (update the piece)', true, '');
           else add('next: sentence missing', false, where+nb); };
         if(kind==='lock'){
@@ -149,19 +154,23 @@
           const segs=r.rows?r.rows.filter(x=>x.effects&&x.effects.length&&!x.pair).map(x=>({effs:x.effects.join(' or '),lines:[x.i],tiers:x.tiers||{}}))
             :plain.replace(/^🔁 Change Effects until /,'').split(', or ').map(seg=>{ const k=seg.lastIndexOf(' lands on Line '); return {effs:seg.slice(0,k), lines:[...seg.slice(k).matchAll(/\d/g)].map(x=>+x[0]-1)}; });
           if(r.rows){ // the title names the counted lines, and the effects only when at most two and the same on every counted line
-            const tl=[...(plain.match(/lands on Line ([\d, or]+)$/)||['',''])[1].matchAll(/\d/g)].map(x=>+x[0]-1).sort().join(',');
-            if(segs.length) add('rows: title names the counted lines', tl===segs.map(x=>x.lines[0]).sort().join(','), where); else add('rows: pair-only title', /land together on Lines/.test(plain), where);
+            const tl=[...(plain.replace(/, or (?:Line \d \+ Line \d|two lines) land together$/,'').match(/lands on Line ([\d, or]+)$/)||['',''])[1].matchAll(/\d/g)].map(x=>+x[0]-1).sort().join(',');
+            if(segs.length) add('rows: title names the counted lines', tl===segs.map(x=>x.lines[0]).sort().join(','), where); else add('rows: pair-only title', /land together$/.test(plain), where);
             const same=segs.every(x=>x.effs===segs[0].effs)&&!segs.some(x=>Object.values(x.tiers).some(t=>t>1)), n=new Set(segs.flatMap(x=>x.effs.split(' or '))).size;
             if(segs.length) add('rows: title names the effects only when at most two and the same on every line', /until a target lands/.test(plain)?!(same&&n<=2):(same&&n<=2), where);
             r.rows.forEach(x=>{ if(x.pair) return; if(x.mute&&/^locked · /.test(x.text)) add('rows: "locked" row is a locked line', eff[x.i].locked&&x.text.endsWith(eff[x.i].effect), where);
               if(x.mute&&/^temp-lock · /.test(x.text)) add('rows: "temp-lock" row is a held line', held.includes(x.i), where); }); }
-          const vCur=await Vw(eff); const landings=[]; let allFull=true; const an=analyze(P);
+          const vCur=await Vw(eff); const landings=[]; let allFull=true; const an=analyze(P); const LMIN=(typeof landMin==='function')?landMin(vCur):1;
           // a pair row: both landings together are progress, neither alone is
-          if(r.rows) for(const x of r.rows){ if(!x.pair) continue; for(const [k1,k2] of x.pair){ const e1=groupMembers(k1)[0], e2=groupMembers(k2)[0];
-              const s2=eff.map(l=>l.locked?{...l}:{effect:'',tier:11,locked:false}); s2[x.i]={effect:e1,tier:1,locked:false}; s2[x.j]={effect:e2,tier:1,locked:false}; const v=await Vw(s2);
-              const a1=eff.map(l=>l.locked?{...l}:{effect:'',tier:11,locked:false}); a1[x.i]={effect:e1,tier:1,locked:false}; const v1=await Vw(a1);
-              const a2=eff.map(l=>l.locked?{...l}:{effect:'',tier:11,locked:false}); a2[x.j]={effect:e2,tier:1,locked:false}; const v2=await Vw(a2);
-              add('rows: a pair row counts together and not alone', v!==null&&vCur!==null&&v<vCur-TIE&&v1!==null&&v1>=vCur-TIE&&v2!==null&&v2>=vCur-TIE, where+' → '+e1+' L'+(x.i+1)+' + '+e2+' L'+(x.j+1)+': '+(v===null?'?':v.toFixed(1))+' / alone '+(v1===null?'?':v1.toFixed(1))+', '+(v2===null?'?':v2.toFixed(1))+' vs '+(vCur===null?'?':vCur.toFixed(1))); } }
+          if(r.rows) for(const x of r.rows){ if(!x.pair) continue; const ft=x.floor||1; for(const [k1,k2] of x.pair){
+              // the pair at its floor counts for some member pair; no member alone at the highest value counts (else it would be a single row)
+              const bl=l=>l.locked?{...l}:{effect:'',tier:11,locked:false}; let best=null, bestNames=''; const alone=[];
+              for(const e1 of groupMembers(k1)) for(const e2 of groupMembers(k2)){ if(e1===e2||eff.some(l=>l.locked&&(l.effect===e1||l.effect===e2))) continue;
+                const s2=eff.map(bl); s2[x.i]={effect:e1,tier:ft,locked:false}; s2[x.j]={effect:e2,tier:ft,locked:false}; const v=await Vw(s2); if(v!==null&&(best===null||v<best)){ best=v; bestNames=e1+' L'+(x.i+1)+' + '+e2+' L'+(x.j+1); } }
+              // each half alone, at the pair's floor, must not count (a half may count from a higher value: then the pair row still adds information)
+              for(const e1 of groupMembers(k1)){ if(eff.some(l=>l.locked&&l.effect===e1)) continue; const a1=eff.map(bl); a1[x.i]={effect:e1,tier:ft,locked:false}; const v1=await Vw(a1); if(v1!==null) alone.push(v1); }
+              for(const e2 of groupMembers(k2)){ if(eff.some(l=>l.locked&&l.effect===e2)) continue; const a2=eff.map(bl); a2[x.j]={effect:e2,tier:ft,locked:false}; const v2=await Vw(a2); if(v2!==null) alone.push(v2); }
+              add('rows: a pair row counts together and not alone', best!==null&&vCur!==null&&best<vCur-LMIN&&alone.every(v=>v>=vCur-LMIN), where+' → '+bestNames+': '+(best===null?'?':best.toFixed(1))+' / alone min '+(alone.length?Math.min(...alone).toFixed(1):'?')+' vs '+(vCur===null?'?':vCur.toFixed(1))); } }
           if(r.rows) for(const x of r.rows){ if(!(x.mute&&(x.text==='does not count yet'||x.text==='does not count alone'))) continue; const s2=eff.map(y=>({...y})); s2[x.i]={effect:'',tier:11,locked:false}; const v=await Vw(s2);
             add('rows: a "does not count yet" line is worth nothing', !eff[x.i].locked&&v!==null&&vCur!==null&&v<=vCur+TIE, where+' → Line '+(x.i+1)); }
           const listed=new Set();
@@ -170,17 +179,17 @@
               const fl=(seg.tiers&&(seg.tiers[e]||seg.tiers[Object.keys(seg.tiers).find(n=>n.split(' / ').includes(e))]))||1;
               const s2=eff.map(l=>l.locked?{...l}:{effect:'',tier:11,locked:false}); s2[i]={effect:e,tier:fl,locked:false}; const v=await Vw(s2); if(v===null) continue;
               // a row's tier floor is the lowest tier from which the landing counts: one tier lower must not count
-              if(fl>1){ const s3=eff.map(l=>l.locked?{...l}:{effect:'',tier:11,locked:false}); s3[i]={effect:e,tier:fl-1,locked:false}; const v3=await Vw(s3); add('rows: tier floor is the lowest tier that counts', v3!==null&&vCur!==null&&v3>=vCur-TIE, where+' → '+e+' on Line '+(i+1)+' at T'+(fl-1)+' gives '+(v3===null?'?':v3.toFixed(1))+' vs '+(vCur===null?'?':vCur.toFixed(1))); }
+              if(fl>1){ const s3=eff.map(l=>l.locked?{...l}:{effect:'',tier:11,locked:false}); s3[i]={effect:e,tier:fl-1,locked:false}; const v3=await Vw(s3); add('rows: tier floor is the lowest tier that counts', v3!==null&&vCur!==null&&v3>=vCur-LMIN, where+' → '+e+' on Line '+(i+1)+' at T'+(fl-1)+' gives '+(v3===null?'?':v3.toFixed(1))+' vs '+(vCur===null?'?':vCur.toFixed(1))); }
               // an "any of" group counts when some member lands: members are not checked one by one
               if((cfg.groupEffs||[]).includes(e)){ add('change: a group landing is named', true, ''); continue; }
-              add('change: named landing really is progress', vCur!==null&&v<vCur-TIE, where+' → '+e+' on Line '+(i+1)+' gives '+v.toFixed(1)+' vs '+(vCur===null?'?':vCur.toFixed(1)));
+              add('change: named landing really is progress', vCur!==null&&v<vCur-LMIN, where+' → '+e+' on Line '+(i+1)+' gives '+v.toFixed(1)+' vs '+(vCur===null?'?':vCur.toFixed(1)));
               if(!withP(s2,()=>{ const a2=analyze(P); const have=new Set(s2.filter(l=>l.effect).map(l=>keyOf(l.effect))); return a2.desired.filter(d=>have.has(d)).length>=a2.N; })) allFull=false;
-              const q=await Qw(s2); let nx=(typeof nextAct==='function')?nextAct(P,s2):(q?q.best:-1); if(nx<0&&Exact.busy()){ await wait(); nx=(typeof nextAct==='function')?nextAct(P,s2):(q?q.best:-1); } landings.push({i,e,next:nx}); } }
+              const q=await Qw(s2); const nxOf=()=>(typeof nextMove==='function')?nextMove(P,s2).act:((typeof nextAct==='function')?nextAct(P,s2):(q?q.best:-1)); let nx=nxOf(); if(nx<0&&Exact.busy()){ await wait(); nx=nxOf(); } landings.push({i,e,next:nx}); } }
           // the other way round: a wanted effect whose landing is progress must be in the title (whole unit: any still-open target)
           const open=isSimple?tEffs:reqEffects().flatMap(k=>groupMembers(k)).filter(e=>tEffs.includes(e));
           for(let i=0;i<3;i++){ if(eff[i].locked) continue; for(const e of open){ if(listed.has(e+'|'+i)||eff.some(l=>l.locked&&l.effect===e)) continue;
             const s2=eff.map(l=>l.locked?{...l}:{effect:'',tier:11,locked:false}); s2[i]={effect:e,tier:r.rows?15:1,locked:false}; const v=await Vw(s2); if(v===null||vCur===null) continue;
-            add('change: a landing that is progress is named in the title', v>=vCur-TIE, where+' → '+e+' on Line '+(i+1)+' gives '+v.toFixed(1)+' vs '+vCur.toFixed(1)+' but is not named'); } }
+            add('change: a landing that is progress is named in the title', v>=vCur-LMIN, where+' → '+e+' on Line '+(i+1)+' gives '+v.toFixed(1)+' vs '+vCur.toFixed(1)+' but is not named'); } }
           const nexts=new Set(landings.map(x=>x.next)); let mm;
           if(/then (?:lock|hold) (?:the line it landed on|that line)/.test(body)) landings.forEach(x=>add('change: "hold the line it landed on" is the next move for each landing', x.next===1+x.i, where+' → '+x.e+' on Line '+(x.i+1)+' → solver '+ACT_NAMES[x.next]));
           else if((mm=body.match(/then (?:lock|hold) Line (\d)/))) landings.forEach(x=>add('change: "then hold Line n" is the next move for each landing', x.next===+mm[1], where+' → '+x.e+' on Line '+(x.i+1)+' → solver '+ACT_NAMES[x.next]));
