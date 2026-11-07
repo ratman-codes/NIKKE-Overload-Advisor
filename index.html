@@ -75,32 +75,37 @@
   };
   sel(localStorage.getItem(KEY)==='simple'?'simple':'adv');   // Whole unit is the default
 
-  // New-version check. No version number to maintain: the server (GitHub Pages, or any web server) sends an
-  // ETag or Last-Modified for each file. The three files are asked for with HEAD requests, bypassing the
-  // browser cache, right after load and then every minute and whenever the tab is shown again; when any
-  // stamp differs from the one at load, the bar appears. Does nothing when opened from a file:// path or when
-  // the server sends no stamp. The inner pages keep their saves in localStorage, so a refresh loses nothing.
+  // New-version check. No version number to maintain. Every minute (and when the tab is shown again) the three
+  // files are asked for with HEAD requests that bypass the browser cache. A changed ETag / Last-Modified is only a
+  // hint: GitHub Pages re-stamps EVERY file with the build time on every push, even a push that touched only the
+  // solver tools or the README (Nov 2026: the bar showed with no page change). So a changed stamp triggers one
+  // download of that file, and the bar appears only when its CONTENT differs from what was there at load, and the
+  // same new content is seen on two checks in a row (a lagging CDN copy cannot trip it). Does nothing from a
+  // file:// path. The inner pages keep their saves in localStorage, so a refresh loses nothing.
   (function(){
     if(location.protocol==='file:') return;
     const FILES=['index.html','advanced.html','simple.html'];
     const stamp=async f=>{ try{ const r=await fetch(f+'?v='+Date.now(),{method:'HEAD',cache:'no-store'}); if(!r.ok) return null; return r.headers.get('etag')||r.headers.get('last-modified')||null; }catch(e){ return null; } };
-    const read=async()=>{ const out={}; for(const f of FILES) out[f]=await stamp(f); return out; };
-    let base=null, dismissed=false, timer=null;
+    const hashOf=async t=>{ try{ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t)); return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join(''); }catch(e){ let h=0; for(let i=0;i<t.length;i++) h=(h*31+t.charCodeAt(i))|0; return t.length+':'+h; } };
+    const content=async f=>{ try{ const r=await fetch(f+'?v='+Date.now(),{cache:'no-store'}); return r.ok?await hashOf(await r.text()):null; }catch(e){ return null; } };
+    const base={}, seen={}; let ready=false, dismissed=false;
     const bar=document.getElementById('newVer');
     document.getElementById('newVerGo').onclick=()=>location.reload();
     document.getElementById('newVerLater').onclick=()=>{ dismissed=true; bar.classList.remove('show'); };
+    async function init(){ for(const f of FILES) base[f]={stamp:await stamp(f),hash:await content(f)}; ready=true; }
     async function check(){
-      if(dismissed) return;
-      const now=await read();
-      if(!base){ base=now; return; }
-      const changed=FILES.some(f=>base[f]&&now[f]&&base[f]!==now[f]);
-      if(changed) bar.classList.add('show');
+      if(dismissed||!ready) return;
+      for(const f of FILES){
+        const st=await stamp(f); if(!st||!base[f].stamp||st===base[f].stamp){ seen[f]=null; continue; }
+        const h=await content(f); if(!h||!base[f].hash) continue;
+        if(h===base[f].hash){ base[f].stamp=st; seen[f]=null; continue; }   // re-stamped, same page: not an update
+        if(seen[f]===h){ bar.classList.add('show'); return; }               // the same new content twice: real
+        seen[f]=h;
+      }
     }
-    check();
-    // Every minute: three tiny HEAD requests. Faster buys nothing (GitHub Pages caches each file for ~10 minutes
-    // on its side, so the answer cannot change sooner) and costs battery and goodwill. The tab-focus check is
-    // the usual trigger anyway.
-    timer=setInterval(check,60*1000);
+    init();
+    // Every minute: three tiny HEAD requests; a file is only downloaded when its stamp changed.
+    setInterval(check,60*1000);
     document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') check(); });
   })();
 </script>
